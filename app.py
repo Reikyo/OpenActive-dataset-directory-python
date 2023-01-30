@@ -48,8 +48,8 @@ def get_distributions():
         and type(r1.json()['hasPart']) == list
     ):
 
-        # for sUrlCatalogue in r1.json()['hasPart']: # Enable to do all catalogues
-        for sUrlCatalogue in [r1.json()['hasPart'][0]]: # Enable to do only one catalogue for a test
+        for sUrlCatalogue in r1.json()['hasPart']: # Enable to do all catalogues
+        # for sUrlCatalogue in [r1.json()['hasPart'][0]]: # Enable to do only one catalogue for a test
             if (type(sUrlCatalogue) == str):
 
                 try:
@@ -66,9 +66,11 @@ def get_distributions():
                     and 'dataset' in r2.json().keys()
                     and type(r2.json()['dataset']) == list
                 ):
+                    # TODO: Remove:
+                    print(len(r2.json()['dataset']))
 
-                    # for sUrlDataset in r2.json()['dataset']: # Enable to do all datasets
-                    for sUrlDataset in [r2.json()['dataset'][0]]: # Enable to do only one dataset for a test
+                    for sUrlDataset in r2.json()['dataset']: # Enable to do all datasets
+                    # for sUrlDataset in [r2.json()['dataset'][0]]: # Enable to do only one dataset for a test
                         if (type(sUrlDataset) == str):
 
                             try:
@@ -103,7 +105,11 @@ def get_distributions():
                                         else:
                                             distributions = []
 
-                                        for distribution in distributions:
+                                        # if (len(distributions) < 1):
+                                        #     continue
+
+                                        for distribution in distributions: # Enable to do all distributions
+                                        # for distribution in [distributions[0]]: # Enable to do only one distribution for a test
                                             if (type(distribution) == dict):
 
                                                 # First attempt, no protection from missing fields:
@@ -163,7 +169,7 @@ def get_distributions():
 
                                                 content = {}
                                                 # Should match sUrlCatalogue from r1.json()['hasPart']:
-                                                content['urlCatalogue'] = r2.json()['id'] if 'id' in r2.json().keys() else ''
+                                                content['urlCatalogue'] = r2.json()['id'] if 'id' in r2.json().keys() else r2.json()['@id'] if '@id' in r2.json().keys() else ''
                                                 # The catalogue publisher name is the closest we have to a catalogue name proper:
                                                 content['namePublisherCatalogue'] = r2.json()['publisher']['name'] if 'publisher' in r2.json().keys() and 'name' in r2.json()['publisher'].keys() else ''
                                                 # Should match sUrlDataset from r2.json()['dataset']:
