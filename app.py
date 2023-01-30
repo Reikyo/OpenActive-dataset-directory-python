@@ -30,7 +30,7 @@ def try_requests(url):
 @application.route('/distributions')
 def get_distributions():
 
-    output = []
+    distributions = []
 
     # ----------------------------------------------------------------------------------------------------
 
@@ -66,8 +66,6 @@ def get_distributions():
                     and 'dataset' in r2.json().keys()
                     and type(r2.json()['dataset']) == list
                 ):
-                    # TODO: Remove:
-                    print(len(r2.json()['dataset']))
 
                     for sUrlDataset in r2.json()['dataset']: # Enable to do all datasets
                     # for sUrlDataset in [r2.json()['dataset'][0]]: # Enable to do only one dataset for a test
@@ -95,105 +93,114 @@ def get_distributions():
 
                                         jsonld = json.loads(val.string)
 
-                                        # ----------------------------------------------------------------------------------------------------
-
                                         if (    type(jsonld) == dict
                                             and 'distribution' in jsonld.keys()
                                             and type(jsonld['distribution']) == list
                                         ):
-                                            distributions = jsonld['distribution']
-                                        else:
-                                            distributions = []
 
-                                        # if (len(distributions) < 1):
-                                        #     continue
+                                            for jsonldDistribution in jsonld['distribution']: # Enable to do all distributions
+                                            # for jsonldDistribution in [distributions[0]]: # Enable to do only one distribution for a test
+                                                if (type(jsonldDistribution) == dict):
 
-                                        for distribution in distributions: # Enable to do all distributions
-                                        # for distribution in [distributions[0]]: # Enable to do only one distribution for a test
-                                            if (type(distribution) == dict):
+                                                    distribution = {}
 
-                                                # First attempt, no protection from missing fields:
-                                                # output.append({
-                                                #     'urlCatalogue': r2.json()['id'], # Should match sUrlCatalogue from r1.json()['hasPart']
-                                                #     'namePublisherCatalogue': r2.json()['publisher']['name'], # The catalogue publisher name is the closest we have to a catalogue name proper
-                                                #
-                                                #     'urlDataset': jsonld['url'], # Should match sUrlDataset from r2.json()['dataset']
-                                                #     'namePublisherDataset': jsonld['publisher']['name'], # We also have jsonld['name'], but here using the publisher name for consistency with namePublisherCatalogue
-                                                #
-                                                #     'urlContent': distribution['contentUrl'],
-                                                #     'nameContent': distribution['name'],
-                                                #
-                                                #     'urlDiscussion': jsonld['discussionUrl'],
-                                                #     'urlLicense': jsonld['license'],
-                                                # })
+                                                    # Should match sUrlCatalogue from r1.json()['hasPart']:
+                                                    distribution['urlCatalogue'] = r2.json()['id'] if 'id' in r2.json().keys() else r2.json()['@id'] if '@id' in r2.json().keys() else ''
+                                                    # The catalogue publisher name is the closest we have to a catalogue name proper:
+                                                    distribution['namePublisherCatalogue'] = r2.json()['publisher']['name'] if 'publisher' in r2.json().keys() and 'name' in r2.json()['publisher'].keys() else ''
+                                                    # Should match sUrlDataset from r2.json()['dataset']:
+                                                    distribution['urlDataset'] = jsonld['url'] if 'url' in jsonld.keys() else ''
+                                                    distribution['nameDataset'] = jsonld['name'] if 'name' in jsonld.keys() else ''
+                                                    distribution['namePublisherDataset'] = jsonld['publisher']['name'] if 'publisher' in jsonld.keys() and 'name' in jsonld['publisher'].keys() else ''
+                                                    distribution['urlDistribution'] = jsonldDistribution['contentUrl'] if 'contentUrl' in jsonldDistribution.keys() else ''
+                                                    distribution['nameDistribution'] = jsonldDistribution['name'] if 'name' in jsonldDistribution.keys() else ''
+                                                    distribution['urlDiscussion'] = jsonld['discussionUrl'] if 'discussionUrl' in jsonld.keys() else ''
+                                                    distribution['urlLicense'] = jsonld['license'] if 'license' in jsonld.keys() else ''
+                                                    distribution['numActivities'] = 0
+                                                    distribution['numActivitiesWithName1'] = 0
+                                                    distribution['numActivitiesWithName2'] = 0
+                                                    distribution['numActivitiesWithId'] = 0
+                                                    distribution['activities'] = []
 
-                                                # Second attempt, a bit long-winded:
-                                                # content = {}
-                                                # try:
-                                                #     content['urlCatalogue'] = r2.json()['id'] # Should match sUrlCatalogue from r1.json()['hasPart']
-                                                # except:
-                                                #     content['urlCatalogue'] = ''
-                                                # try:
-                                                #     content['namePublisherCatalogue'] = r2.json()['publisher']['name'] # The catalogue publisher name is the closest we have to a catalogue name proper
-                                                # except:
-                                                #     content['namePublisherCatalogue'] = ''
-                                                # try:
-                                                #     content['urlDataset'] = jsonld['url'] # Should match sUrlDataset from r2.json()['dataset']
-                                                # except:
-                                                #     content['urlDataset'] = ''
-                                                # try:
-                                                #     content['nameDataset'] = jsonld['name']
-                                                # except:
-                                                #     content['nameDataset'] = ''
-                                                # try:
-                                                #     content['namePublisherDataset'] = jsonld['publisher']['name']
-                                                # except:
-                                                #     content['namePublisherDataset'] = ''
-                                                # try:
-                                                #     content['urlContent'] = distribution['contentUrl']
-                                                # except:
-                                                #     content['urlContent'] = ''
-                                                # try:
-                                                #     content['nameContent'] = distribution['name']
-                                                # except:
-                                                #     content['nameContent'] = ''
-                                                # try:
-                                                #     content['urlDiscussion'] = jsonld['discussionUrl']
-                                                # except:
-                                                #     content['urlDiscussion'] = ''
-                                                # try:
-                                                #     content['urlLicense'] = jsonld['license']
-                                                # except:
-                                                #     content['urlLicense'] = ''
-                                                # output.append(content)
+                                                    # ----------------------------------------------------------------------------------------------------
 
-                                                content = {}
-                                                # Should match sUrlCatalogue from r1.json()['hasPart']:
-                                                content['urlCatalogue'] = r2.json()['id'] if 'id' in r2.json().keys() else r2.json()['@id'] if '@id' in r2.json().keys() else ''
-                                                # The catalogue publisher name is the closest we have to a catalogue name proper:
-                                                content['namePublisherCatalogue'] = r2.json()['publisher']['name'] if 'publisher' in r2.json().keys() and 'name' in r2.json()['publisher'].keys() else ''
-                                                # Should match sUrlDataset from r2.json()['dataset']:
-                                                content['urlDataset'] = jsonld['url'] if 'url' in jsonld.keys() else ''
-                                                content['nameDataset'] = jsonld['name'] if 'name' in jsonld.keys() else ''
-                                                content['namePublisherDataset'] = jsonld['publisher']['name'] if 'publisher' in jsonld.keys() and 'name' in jsonld['publisher'].keys() else ''
-                                                content['urlContent'] = distribution['contentUrl'] if 'contentUrl' in distribution.keys() else ''
-                                                content['nameContent'] = distribution['name'] if 'name' in distribution.keys() else ''
-                                                content['urlDiscussion'] = jsonld['discussionUrl'] if 'discussionUrl' in jsonld.keys() else ''
-                                                content['urlLicense'] = jsonld['license'] if 'license' in jsonld.keys() else ''
-                                                output.append(content)
+                                                    if (    'contentUrl' in jsonldDistribution.keys()
+                                                        and type(jsonldDistribution['contentUrl'] == str)
+                                                    ):
+
+                                                        sUrlDistribution = jsonldDistribution['contentUrl']
+
+                                                        try:
+                                                            r4 = try_requests(sUrlDistribution)
+                                                        except:
+                                                            print('ERROR: Can\'t get distribution', sUrlCatalogue, '->', sUrlDataset, '->', sUrlDistribution)
+                                                            continue
+
+                                                        # ----------------------------------------------------------------------------------------------------
+
+                                                        if (    r4.status_code == 200
+                                                            and r4.json()
+                                                            and type(r4.json()) == dict
+                                                            and 'items' in r4.json().keys()
+                                                            and type(r4.json()['items']) == list
+                                                        ):
+
+                                                            distribution['numActivities'] = len(r4.json()['items'])
+
+                                                            for distributionActivity in r4.json()['items']:
+
+                                                                activity = {}
+
+                                                                if (    type(distributionActivity) == dict
+                                                                    and 'data' in distributionActivity.keys()
+                                                                    and type(distributionActivity['data']) == dict
+                                                                ):
+
+                                                                    if (    'name' in distributionActivity['data'].keys()
+                                                                        and type(distributionActivity['data']['name']) == str
+                                                                    ):
+                                                                        activity['name1'] = distributionActivity['data']['name']
+                                                                        distribution['numActivitiesWithName1'] += 1
+
+                                                                    if (    'beta:sportsActivityLocation' in distributionActivity['data'].keys()
+                                                                        and type(distributionActivity['data']['beta:sportsActivityLocation']) == list
+                                                                        and len(distributionActivity['data']['beta:sportsActivityLocation']) == 1
+                                                                        and type(distributionActivity['data']['beta:sportsActivityLocation'][0]) == dict
+                                                                        and 'name' in distributionActivity['data']['beta:sportsActivityLocation'][0].keys()
+                                                                        # and type(distributionActivity['data']['beta:sportsActivityLocation'][0]['name']) == str # Sometimes this name field is a string, sometimes it is a list of strings ...
+                                                                    ):
+                                                                        activity['name2'] = distributionActivity['data']['beta:sportsActivityLocation'][0]['name']
+                                                                        distribution['numActivitiesWithName2'] += 1
+
+                                                                    if (    'activity' in distributionActivity['data'].keys()
+                                                                        and type(distributionActivity['data']['activity']) == list
+                                                                        and len(distributionActivity['data']['activity']) == 1
+                                                                        and type(distributionActivity['data']['activity'][0]) == dict
+                                                                        and 'id' in distributionActivity['data']['activity'][0].keys()
+                                                                        and type(distributionActivity['data']['activity'][0]['id']) == str
+                                                                    ):
+                                                                        activity['id'] = distributionActivity['data']['activity'][0]['id']
+                                                                        distribution['numActivitiesWithId'] += 1
+
+                                                                if (len(activity.keys()) > 0):
+                                                                    distribution['activities'].append(activity)
+
+                                                    # ----------------------------------------------------------------------------------------------------
+
+                                                    distributions.append(distribution)
 
     # ----------------------------------------------------------------------------------------------------
 
-    # return output # Key order made alphabetical
-    # return jsonify(output) # Key order made alphabetical
-    return json.dumps(output) # Key order maintained as inserted, but have to select JSON in PostMan
+    # return distributions # Key order made alphabetical
+    # return jsonify(distributions) # Key order made alphabetical
+    return json.dumps(distributions) # Key order maintained as inserted, but have to select JSON in PostMan
 
 # ----------------------------------------------------------------------------------------------------
 
 @application.route('/keycounts')
 def get_keycounts():
 
-    output = {
+    keycounts = {
         'metadata': {
             'keysDistributions': {},
             'keysContents': {},
@@ -229,9 +236,9 @@ def get_keycounts():
         for sUrlCatalogue in r1.json()['hasPart']: # Enable to do all catalogues
         # for sUrlCatalogue in [r1.json()['hasPart'][0]]: # Enable to do only one catalogue for a test
             if (    type(sUrlCatalogue) == str
-                and sUrlCatalogue not in output['catalogues'].keys()
+                and sUrlCatalogue not in keycounts['catalogues'].keys()
             ):
-                output['catalogues'][sUrlCatalogue] = {
+                keycounts['catalogues'][sUrlCatalogue] = {
                     'metadata': {
                         'keysDistributions': {},
                         'keysContents': {},
@@ -247,7 +254,7 @@ def get_keycounts():
     print('\rStep 3/5: Processing ...', end='')
     t1 = datetime.datetime.now()
 
-    for sUrlCatalogue,catalogue in output['catalogues'].items():
+    for sUrlCatalogue,catalogue in keycounts['catalogues'].items():
 
         try:
             r2 = try_requests(sUrlCatalogue)
@@ -283,7 +290,7 @@ def get_keycounts():
     print('\rStep 4/5: Processing ...', end='')
     t1 = datetime.datetime.now()
 
-    for sUrlCatalogue,catalogue in output['catalogues'].items():
+    for sUrlCatalogue,catalogue in keycounts['catalogues'].items():
         for sUrlDataset,dataset in catalogue['datasets'].items():
 
             try:
@@ -341,7 +348,7 @@ def get_keycounts():
     print('\rStep 5/5: Processing ...', end='')
     t1 = datetime.datetime.now()
 
-    for sUrlCatalogue,catalogue in output['catalogues'].items():
+    for sUrlCatalogue,catalogue in keycounts['catalogues'].items():
         for sUrlDataset,dataset in catalogue['datasets'].items():
             for sUrlDistribution,distribution in dataset['distributions'].items():
 
@@ -357,6 +364,7 @@ def get_keycounts():
                     and 'items' in r4.json().keys()
                     and type(r4.json()['items']) == list
                 ):
+                    # Each item is a different sporting activity:
                     for item in r4.json()['items']:
                         if (    type(item) == dict
                             and 'data' in item.keys()
@@ -380,7 +388,7 @@ def get_keycounts():
 
     # ----------------------------------------------------------------------------------------------------
 
-    for catalogue in output['catalogues'].values():
+    for catalogue in keycounts['catalogues'].values():
         for dataset in catalogue['datasets'].values():
             for distribution in dataset['distributions'].values():
 
@@ -396,10 +404,10 @@ def get_keycounts():
                     else:
                         catalogue['metadata']['keysDistributions'][key] += dataset['metadata']['keysDistributions'][key]
 
-                    if (key not in output['metadata']['keysDistributions'].keys()):
-                        output['metadata']['keysDistributions'][key] = dataset['metadata']['keysDistributions'][key]
+                    if (key not in keycounts['metadata']['keysDistributions'].keys()):
+                        keycounts['metadata']['keysDistributions'][key] = dataset['metadata']['keysDistributions'][key]
                     else:
-                        output['metadata']['keysDistributions'][key] += dataset['metadata']['keysDistributions'][key]
+                        keycounts['metadata']['keysDistributions'][key] += dataset['metadata']['keysDistributions'][key]
 
                 for key in distribution['contents']['metadata']['keys'].keys():
 
@@ -413,14 +421,14 @@ def get_keycounts():
                     else:
                         catalogue['metadata']['keysContents'][key] += dataset['metadata']['keysContents'][key]
 
-                    if (key not in output['metadata']['keysContents'].keys()):
-                        output['metadata']['keysContents'][key] = dataset['metadata']['keysContents'][key]
+                    if (key not in keycounts['metadata']['keysContents'].keys()):
+                        keycounts['metadata']['keysContents'][key] = dataset['metadata']['keysContents'][key]
                     else:
-                        output['metadata']['keysContents'][key] += dataset['metadata']['keysContents'][key]
+                        keycounts['metadata']['keysContents'][key] += dataset['metadata']['keysContents'][key]
 
     # ----------------------------------------------------------------------------------------------------
 
-    return json.dumps(output)
+    return json.dumps(keycounts)
 
 # ----------------------------------------------------------------------------------------------------
 
