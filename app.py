@@ -213,7 +213,7 @@ def get_keycounts():
 
     # ----------------------------------------------------------------------------------------------------
 
-    print('\rStep 1/5: Processing ...', end='')
+    print('\rStep 1: Processing ...', end='')
     t1 = datetime.datetime.now()
 
     try:
@@ -222,11 +222,11 @@ def get_keycounts():
         print('ERROR: Can\'t get collection of catalogues')
 
     t2 = datetime.datetime.now()
-    print('\rStep 1/5:', t2-t1)
+    print('\rStep 1:', t2-t1)
 
     # ----------------------------------------------------------------------------------------------------
 
-    print('\rStep 2/5: Processing ...', end='')
+    print('\rStep 2: Processing ...', end='')
     t1 = datetime.datetime.now()
 
     if (    r1.status_code == 200
@@ -250,11 +250,11 @@ def get_keycounts():
                 }
 
     t2 = datetime.datetime.now()
-    print('\rStep 2/5:', t2-t1)
+    print('\rStep 2:', t2-t1)
 
     # ----------------------------------------------------------------------------------------------------
 
-    print('\rStep 3/5: Processing ...', end='')
+    print('\rStep 3: Processing ...', end='')
     t1 = datetime.datetime.now()
 
     for catalogueUrl,catalogue in keycounts['catalogues'].items():
@@ -286,11 +286,11 @@ def get_keycounts():
                     }
 
     t2 = datetime.datetime.now()
-    print('\rStep 3/5:', t2-t1)
+    print('\rStep 3:', t2-t1)
 
     # ----------------------------------------------------------------------------------------------------
 
-    print('\rStep 4/5: Processing ...', end='')
+    print('\rStep 4: Processing ...', end='')
     t1 = datetime.datetime.now()
 
     for catalogueUrl,catalogue in keycounts['catalogues'].items():
@@ -347,11 +347,11 @@ def get_keycounts():
                                         dataset['feeds'][jsonldDistribution['contentUrl']]['metadata']['name'] = jsonldDistribution['name']
 
     t2 = datetime.datetime.now()
-    print('\rStep 4/5:', t2-t1)
+    print('\rStep 4:', t2-t1)
 
     # ----------------------------------------------------------------------------------------------------
 
-    print('\rStep 5/5: Processing ...', end='')
+    print('\rStep 5: Processing ...', end='')
     t1 = datetime.datetime.now()
 
     for catalogueUrl,catalogue in keycounts['catalogues'].items():
@@ -390,7 +390,7 @@ def get_keycounts():
                                     feed['itemsData']['names'][item['data']['name']] += 1
 
     t2 = datetime.datetime.now()
-    print('\rStep 5/5:', t2-t1)
+    print('\rStep 5:', t2-t1)
 
     # ----------------------------------------------------------------------------------------------------
 
