@@ -86,6 +86,9 @@ def get_distributions():
 
                                 soup = BeautifulSoup(r3.text, 'html.parser')
 
+                                if (not soup.head):
+                                    continue
+
                                 for val in soup.head.find_all('script'):
                                     if (    'type' in val.attrs.keys()
                                         and val['type'] == 'application/ld+json'
@@ -307,11 +310,16 @@ def get_keycounts():
                 soup = BeautifulSoup(r3.text, 'html.parser')
                 distributions = []
 
+                if (not soup.head):
+                    continue
+
                 for val in soup.head.find_all('script'):
                     if (    'type' in val.attrs.keys()
                         and val['type'] == 'application/ld+json'
                     ):
+
                         jsonld = json.loads(val.string)
+
                         if (    type(jsonld) == dict
                             and 'distribution' in jsonld.keys()
                             and type(jsonld['distribution']) == list
@@ -392,39 +400,37 @@ def get_keycounts():
         for dataset in catalogue['datasets'].values():
             for distribution in dataset['distributions'].values():
 
-                for key in distribution['metadata']['keys']:
+                # ----------------------------------------------------------------------------------------------------
 
+                for key in distribution['metadata']['keys']:
                     if (key not in dataset['metadata']['keysDistributions'].keys()):
                         dataset['metadata']['keysDistributions'][key] = 1
                     else:
                         dataset['metadata']['keysDistributions'][key] += 1
 
-                    if (key not in catalogue['metadata']['keysDistributions'].keys()):
-                        catalogue['metadata']['keysDistributions'][key] = dataset['metadata']['keysDistributions'][key]
-                    else:
-                        catalogue['metadata']['keysDistributions'][key] += dataset['metadata']['keysDistributions'][key]
-
-                    if (key not in keycounts['metadata']['keysDistributions'].keys()):
-                        keycounts['metadata']['keysDistributions'][key] = dataset['metadata']['keysDistributions'][key]
-                    else:
-                        keycounts['metadata']['keysDistributions'][key] += dataset['metadata']['keysDistributions'][key]
-
-                for key in distribution['contents']['metadata']['keys'].keys():
-
+                for key,val in distribution['contents']['metadata']['keys'].items():
                     if (key not in dataset['metadata']['keysContents'].keys()):
-                        dataset['metadata']['keysContents'][key] = distribution['contents']['metadata']['keys'][key]
+                        dataset['metadata']['keysContents'][key] = val
                     else:
-                        dataset['metadata']['keysContents'][key] += distribution['contents']['metadata']['keys'][key]
+                        dataset['metadata']['keysContents'][key] += val
 
-                    if (key not in catalogue['metadata']['keysContents'].keys()):
-                        catalogue['metadata']['keysContents'][key] = dataset['metadata']['keysContents'][key]
-                    else:
-                        catalogue['metadata']['keysContents'][key] += dataset['metadata']['keysContents'][key]
+            # ----------------------------------------------------------------------------------------------------
 
-                    if (key not in keycounts['metadata']['keysContents'].keys()):
-                        keycounts['metadata']['keysContents'][key] = dataset['metadata']['keysContents'][key]
+            for superKey in ['keysDistributions', 'keysContents']:
+                for key,val in dataset['metadata'][superKey].items():
+                    if (key not in catalogue['metadata'][superKey].keys()):
+                        catalogue['metadata'][superKey][key] = val
                     else:
-                        keycounts['metadata']['keysContents'][key] += dataset['metadata']['keysContents'][key]
+                        catalogue['metadata'][superKey][key] += val
+
+        # ----------------------------------------------------------------------------------------------------
+
+        for superKey in ['keysDistributions', 'keysContents']:
+            for key,val in catalogue['metadata'][superKey].items():
+                if (key not in keycounts['metadata'][superKey].keys()):
+                    keycounts['metadata'][superKey][key] = val
+                else:
+                    keycounts['metadata'][superKey][key] += val
 
     # ----------------------------------------------------------------------------------------------------
 
