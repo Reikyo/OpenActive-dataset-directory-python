@@ -436,7 +436,13 @@ def get_keycounts():
 
 catalogueCollectionUrl = 'https://openactive.io/data-catalogs/data-catalog-collection.jsonld'
 
-catalogueUrls = []
+catalogueUrls = {
+    'metadata': {
+        'counts': None,
+        'timeLastUpdated': None,
+    },
+    'data': []
+}
 @application.route('/catalogueurls')
 def get_catalogueUrls():
 
@@ -454,19 +460,28 @@ def get_catalogueUrls():
         for catalogueUrl in r1.json()['hasPart']: # Enable to do all catalogues
         # for catalogueUrl in [r1.json()['hasPart'][0]]: # Enable to do only one catalogue for a test
             if (    type(catalogueUrl) == str
-                and catalogueUrl not in catalogueUrls
+                and catalogueUrl not in catalogueUrls['data']
             ):
-                catalogueUrls.append(catalogueUrl)
+                catalogueUrls['data'].append(catalogueUrl)
 
-    return catalogueUrls
+    catalogueUrls['metadata']['counts'] = len(catalogueUrls['data'])
+    catalogueUrls['metadata']['timeLastUpdated'] = str(datetime.datetime.now())
+
+    return json.dumps(catalogueUrls)
 
 # ----------------------------------------------------------------------------------------------------
 
-datasetUrls = []
+datasetUrls = {
+    'metadata': {
+        'counts': None,
+        'timeLastUpdated': None,
+    },
+    'data': []
+}
 @application.route('/dataseturls')
 def get_datasetUrls():
 
-    for catalogueUrl in catalogueUrls:
+    for catalogueUrl in catalogueUrls['data']:
 
         try:
             r2 = try_requests(catalogueUrl)
@@ -483,19 +498,28 @@ def get_datasetUrls():
             for datasetUrl in r2.json()['dataset']: # Enable to do all datasets
             # for datasetUrl in [r2.json()['dataset'][0]]: # Enable to do only one dataset for a test
                 if (    type(datasetUrl) == str
-                    and datasetUrl not in datasetUrls
+                    and datasetUrl not in datasetUrls['data']
                 ):
-                    datasetUrls.append(datasetUrl)
+                    datasetUrls['data'].append(datasetUrl)
 
-    return datasetUrls
+    datasetUrls['metadata']['counts'] = len(datasetUrls['data'])
+    datasetUrls['metadata']['timeLastUpdated'] = str(datetime.datetime.now())
+
+    return json.dumps(datasetUrls)
 
 # ----------------------------------------------------------------------------------------------------
 
-feedUrls = []
+feedUrls = {
+    'metadata': {
+        'counts': None,
+        'timeLastUpdated': None,
+    },
+    'data': []
+}
 @application.route('/feedurls')
 def get_feedUrls():
 
-    for datasetUrl in datasetUrls:
+    for datasetUrl in datasetUrls['data']:
 
         try:
             r3 = try_requests(datasetUrl)
@@ -529,11 +553,14 @@ def get_feedUrls():
                             if (    type(jsonldDistribution) == dict
                                 and 'contentUrl' in jsonldDistribution.keys()
                                 and type(jsonldDistribution['contentUrl']) == str
-                                and jsonldDistribution['contentUrl'] not in feedUrls
+                                and jsonldDistribution['contentUrl'] not in feedUrls['data']
                             ):
-                                feedUrls.append(jsonldDistribution['contentUrl'])
+                                feedUrls['data'].append(jsonldDistribution['contentUrl'])
 
-    return feedUrls
+    feedUrls['metadata']['counts'] = len(feedUrls['data'])
+    feedUrls['metadata']['timeLastUpdated'] = str(datetime.datetime.now())
+
+    return json.dumps(feedUrls)
 
 # ----------------------------------------------------------------------------------------------------
 
@@ -541,7 +568,7 @@ feeds2 = []
 @application.route('/feeds2')
 def get_feeds2():
 
-    for datasetUrl in datasetUrls:
+    for datasetUrl in datasetUrls['data']:
 
         try:
             r3 = try_requests(datasetUrl)
