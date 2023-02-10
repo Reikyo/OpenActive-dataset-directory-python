@@ -308,7 +308,6 @@ def get_keycounts():
             ):
 
                 soup = BeautifulSoup(r3.text, 'html.parser')
-                distributions = []
 
                 if (not soup.head):
                     continue
@@ -324,29 +323,28 @@ def get_keycounts():
                             and 'distribution' in jsonld.keys()
                             and type(jsonld['distribution']) == list
                         ):
-                            distributions += jsonld['distribution']
 
-                for distribution in distributions:
-                    if (    type(distribution) == dict
-                        and 'contentUrl' in distribution.keys()
-                        and type(distribution['contentUrl']) == str
-                        and distribution['contentUrl'] not in dataset['distributions'].keys()
-                    ):
-                        dataset['distributions'][distribution['contentUrl']] = {
-                            'metadata': {
-                                'keys': list(distribution.keys()),
-                            },
-                            'contents': {
-                                'metadata': {
-                                    'keys': {},
-                                },
-                                'names': {},
-                            },
-                        }
-                        if (    'name' in distribution.keys()
-                            and type(distribution['name']) == str
-                        ):
-                            dataset['distributions'][distribution['contentUrl']]['metadata']['name'] = distribution['name']
+                            for jsonldDistribution in jsonld['distribution']:
+                                if (    type(jsonldDistribution) == dict
+                                    and 'contentUrl' in jsonldDistribution.keys()
+                                    and type(jsonldDistribution['contentUrl']) == str
+                                    and jsonldDistribution['contentUrl'] not in dataset['distributions'].keys()
+                                ):
+                                    dataset['distributions'][jsonldDistribution['contentUrl']] = {
+                                        'metadata': {
+                                            'keys': list(jsonldDistribution.keys()),
+                                        },
+                                        'contents': {
+                                            'metadata': {
+                                                'keys': {},
+                                            },
+                                            'names': {},
+                                        },
+                                    }
+                                    if (    'name' in jsonldDistribution.keys()
+                                        and type(jsonldDistribution['name']) == str
+                                    ):
+                                        dataset['distributions'][jsonldDistribution['contentUrl']]['metadata']['name'] = jsonldDistribution['name']
 
     t2 = datetime.datetime.now()
     print('\rStep 4/5:', t2-t1)
