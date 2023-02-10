@@ -47,7 +47,6 @@ def get_feeds():
         and 'hasPart' in r1.json().keys()
         and type(r1.json()['hasPart']) == list
     ):
-
         for catalogueUrl in r1.json()['hasPart']: # Enable to do all catalogues
         # for catalogueUrl in [r1.json()['hasPart'][0]]: # Enable to do only one catalogue for a test
             if (type(catalogueUrl) == str):
@@ -66,7 +65,6 @@ def get_feeds():
                     and 'dataset' in r2.json().keys()
                     and type(r2.json()['dataset']) == list
                 ):
-
                     for datasetUrl in r2.json()['dataset']: # Enable to do all datasets
                     # for datasetUrl in [r2.json()['dataset'][0]]: # Enable to do only one dataset for a test
                         if (type(datasetUrl) == str):
@@ -100,25 +98,24 @@ def get_feeds():
                                             and 'distribution' in jsonld.keys()
                                             and type(jsonld['distribution']) == list
                                         ):
-
                                             for jsonldDistribution in jsonld['distribution']: # Enable to do all feeds
                                             # for jsonldDistribution in [jsonld['distribution'][0]]: # Enable to do only one feed for a test
                                                 if (type(jsonldDistribution) == dict):
 
                                                     feed = {}
 
-                                                    # Should match catalogueUrl from r1.json()['hasPart']:
-                                                    feed['catalogueUrl'] = r2.json()['id'] if 'id' in r2.json().keys() else r2.json()['@id'] if '@id' in r2.json().keys() else ''
-                                                    # The catalogue publisher name is the closest we have to a catalogue name proper:
-                                                    feed['cataloguePublisherName'] = r2.json()['publisher']['name'] if 'publisher' in r2.json().keys() and 'name' in r2.json()['publisher'].keys() else ''
+                                                    feed['feedUrl'] = jsonldDistribution['contentUrl'] if ('contentUrl' in jsonldDistribution.keys()) else ''
+                                                    feed['feedName'] = jsonldDistribution['name'] if ('name' in jsonldDistribution.keys()) else ''
                                                     # Should match datasetUrl from r2.json()['dataset']:
-                                                    feed['datasetUrl'] = jsonld['url'] if 'url' in jsonld.keys() else ''
-                                                    feed['datasetName'] = jsonld['name'] if 'name' in jsonld.keys() else ''
-                                                    feed['datasetPublisherName'] = jsonld['publisher']['name'] if 'publisher' in jsonld.keys() and 'name' in jsonld['publisher'].keys() else ''
-                                                    feed['feedUrl'] = jsonldDistribution['contentUrl'] if 'contentUrl' in jsonldDistribution.keys() else ''
-                                                    feed['feedName'] = jsonldDistribution['name'] if 'name' in jsonldDistribution.keys() else ''
-                                                    feed['discussionUrl'] = jsonld['discussionUrl'] if 'discussionUrl' in jsonld.keys() else ''
-                                                    feed['licenseUrl'] = jsonld['license'] if 'license' in jsonld.keys() else ''
+                                                    feed['datasetUrl'] = jsonld['url'] if ('url' in jsonld.keys()) else ''
+                                                    feed['datasetName'] = jsonld['name'] if ('name' in jsonld.keys()) else ''
+                                                    feed['datasetPublisherName'] = jsonld['publisher']['name'] if ('publisher' in jsonld.keys()) and (type(jsonld['publisher']) == dict) and ('name' in jsonld['publisher'].keys()) else ''
+                                                    # Should match catalogueUrl from r1.json()['hasPart']:
+                                                    feed['catalogueUrl'] = r2.json()['id'] if ('id' in r2.json().keys()) else r2.json()['@id'] if ('@id' in r2.json().keys()) else ''
+                                                    # The catalogue publisher name is the closest we have to a catalogue name proper:
+                                                    feed['cataloguePublisherName'] = r2.json()['publisher']['name'] if ('publisher' in r2.json().keys()) and (type(r2.json()['publisher']) == dict) and ('name' in r2.json()['publisher'].keys()) else ''
+                                                    feed['discussionUrl'] = jsonld['discussionUrl'] if ('discussionUrl' in jsonld.keys()) else ''
+                                                    feed['licenseUrl'] = jsonld['license'] if ('license' in jsonld.keys()) else ''
                                                     feed['numActivities'] = 0
                                                     feed['numActivitiesWithName1'] = 0
                                                     feed['numActivitiesWithName2'] = 0
@@ -235,7 +232,6 @@ def get_keycounts():
         and 'hasPart' in r1.json().keys()
         and type(r1.json()['hasPart']) == list
     ):
-
         for catalogueUrl in r1.json()['hasPart']: # Enable to do all catalogues
         # for catalogueUrl in [r1.json()['hasPart'][0]]: # Enable to do only one catalogue for a test
             if (    type(catalogueUrl) == str
@@ -271,7 +267,6 @@ def get_keycounts():
             and 'dataset' in r2.json().keys()
             and type(r2.json()['dataset']) == list
         ):
-
             for datasetUrl in r2.json()['dataset']: # Enable to do all datasets
             # for datasetUrl in [r2.json()['dataset'][0]]: # Enable to do only one dataset for a test
                 if (    type(datasetUrl) == str
@@ -323,13 +318,13 @@ def get_keycounts():
                             and 'distribution' in jsonld.keys()
                             and type(jsonld['distribution']) == list
                         ):
-
                             for jsonldDistribution in jsonld['distribution']:
                                 if (    type(jsonldDistribution) == dict
                                     and 'contentUrl' in jsonldDistribution.keys()
                                     and type(jsonldDistribution['contentUrl']) == str
                                     and jsonldDistribution['contentUrl'] not in dataset['feeds'].keys()
                                 ):
+
                                     dataset['feeds'][jsonldDistribution['contentUrl']] = {
                                         'metadata': {
                                             'keys': list(jsonldDistribution.keys()),
@@ -341,6 +336,7 @@ def get_keycounts():
                                             'names': {},
                                         },
                                     }
+
                                     if (    'name' in jsonldDistribution.keys()
                                         and type(jsonldDistribution['name']) == str
                                     ):
@@ -376,11 +372,13 @@ def get_keycounts():
                             and 'data' in item.keys()
                             and type(item['data']) == dict
                         ):
+
                             for key in item['data'].keys():
                                 if (key not in feed['itemsData']['metadata']['keys'].keys()):
                                     feed['itemsData']['metadata']['keys'][key] = 1
                                 else:
                                     feed['itemsData']['metadata']['keys'][key] += 1
+
                             if (    'name' in item['data'].keys()
                                 and type(item['data']['name']) == str
                             ):
@@ -536,6 +534,64 @@ def get_feedUrls():
                                 feedUrls.append(jsonldDistribution['contentUrl'])
 
     return feedUrls
+
+# ----------------------------------------------------------------------------------------------------
+
+feeds2 = []
+@application.route('/feeds2')
+def get_feeds2():
+
+    for datasetUrl in datasetUrls:
+
+        try:
+            r3 = try_requests(datasetUrl)
+        except:
+            # print('ERROR: Can\'t get dataset', catalogueUrl, '->', datasetUrl)
+            continue
+
+        if (    r3.status_code == 200
+            and r3.text
+            and type(r3.text) == str
+        ):
+
+            soup = BeautifulSoup(r3.text, 'html.parser')
+
+            if (not soup.head):
+                continue
+
+            for val in soup.head.find_all('script'):
+                if (    'type' in val.attrs.keys()
+                    and val['type'] == 'application/ld+json'
+                ):
+
+                    jsonld = json.loads(val.string)
+
+                    if (    type(jsonld) == dict
+                        and 'distribution' in jsonld.keys()
+                        and type(jsonld['distribution']) == list
+                    ):
+                        for jsonldDistribution in jsonld['distribution']: # Enable to do all feeds
+                        # for jsonldDistribution in [jsonld['distribution'][0]]: # Enable to do only one feed for a test
+                            if (type(jsonldDistribution) == dict):
+
+                                feed = {}
+
+                                feed['feedUrl'] = jsonldDistribution['contentUrl'] if ('contentUrl' in jsonldDistribution.keys()) else ''
+                                feed['feedName'] = jsonldDistribution['name'] if ('name' in jsonldDistribution.keys()) else ''
+                                # Should match datasetUrl from r2.json()['dataset']:
+                                feed['datasetUrl'] = jsonld['url'] if ('url' in jsonld.keys()) else ''
+                                feed['datasetName'] = jsonld['name'] if ('name' in jsonld.keys()) else ''
+                                feed['datasetPublisherName'] = jsonld['publisher']['name'] if ('publisher' in jsonld.keys()) and (type(jsonld['publisher']) == dict) and ('name' in jsonld['publisher'].keys()) else ''
+                                # # Should match catalogueUrl from r1.json()['hasPart']:
+                                # feed['catalogueUrl'] = r2.json()['id'] if ('id' in r2.json().keys()) else r2.json()['@id'] if ('@id' in r2.json().keys()) else ''
+                                # # The catalogue publisher name is the closest we have to a catalogue name proper:
+                                # feed['cataloguePublisherName'] = r2.json()['publisher']['name'] if ('publisher' in r2.json().keys()) and (type(r2.json()['publisher']) == dict) and ('name' in r2.json()['publisher'].keys()) else ''
+                                feed['discussionUrl'] = jsonld['discussionUrl'] if ('discussionUrl' in jsonld.keys()) else ''
+                                feed['licenseUrl'] = jsonld['license'] if ('license' in jsonld.keys()) else ''
+
+                                feeds2.append(feed)
+
+    return json.dumps(feeds2)
 
 # ----------------------------------------------------------------------------------------------------
 
