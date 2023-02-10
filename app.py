@@ -8,6 +8,8 @@ from flask import Flask, jsonify
 
 application = Flask(__name__)
 
+catalogueCollectionUrl = 'https://openactive.io/data-catalogs/data-catalog-collection.jsonld'
+
 # ----------------------------------------------------------------------------------------------------
 
 def try_requests(url):
@@ -35,7 +37,7 @@ def get_feeds():
     # ----------------------------------------------------------------------------------------------------
 
     try:
-        r1 = try_requests('https://openactive.io/data-catalogs/data-catalog-collection.jsonld')
+        r1 = try_requests(catalogueCollectionUrl)
     except:
         print('ERROR: Can\'t get collection of catalogues')
 
@@ -214,7 +216,7 @@ def get_keycounts():
     t1 = datetime.datetime.now()
 
     try:
-        r1 = try_requests('https://openactive.io/data-catalogs/data-catalog-collection.jsonld')
+        r1 = try_requests(catalogueCollectionUrl)
     except:
         print('ERROR: Can\'t get collection of catalogues')
 
@@ -434,11 +436,9 @@ def get_keycounts():
 
 # ----------------------------------------------------------------------------------------------------
 
-catalogueCollectionUrl = 'https://openactive.io/data-catalogs/data-catalog-collection.jsonld'
-
 catalogueUrls = {
     'metadata': {
-        'counts': None,
+        'counts': 0,
         'timeLastUpdated': None,
     },
     'data': []
@@ -473,13 +473,16 @@ def get_catalogueUrls():
 
 datasetUrls = {
     'metadata': {
-        'counts': None,
+        'counts': 0,
         'timeLastUpdated': None,
     },
     'data': []
 }
 @application.route('/dataseturls')
 def get_datasetUrls():
+
+    if (catalogueUrls['metadata']['counts'] == 0):
+        get_catalogueUrls()
 
     for catalogueUrl in catalogueUrls['data']:
 
@@ -511,13 +514,16 @@ def get_datasetUrls():
 
 feedUrls = {
     'metadata': {
-        'counts': None,
+        'counts': 0,
         'timeLastUpdated': None,
     },
     'data': []
 }
 @application.route('/feedurls')
 def get_feedUrls():
+
+    if (datasetUrls['metadata']['counts'] == 0):
+        get_datasetUrls()
 
     for datasetUrl in datasetUrls['data']:
 
@@ -564,9 +570,18 @@ def get_feedUrls():
 
 # ----------------------------------------------------------------------------------------------------
 
-feeds2 = []
+feeds2 = {
+    'metadata': {
+        'counts': 0,
+        'timeLastUpdated': None,
+    },
+    'data': []
+}
 @application.route('/feeds2')
 def get_feeds2():
+
+    if (datasetUrls['metadata']['counts'] == 0):
+        get_datasetUrls()
 
     for datasetUrl in datasetUrls['data']:
 
@@ -616,7 +631,10 @@ def get_feeds2():
                                 feed['discussionUrl'] = jsonld['discussionUrl'] if ('discussionUrl' in jsonld.keys()) else ''
                                 feed['licenseUrl'] = jsonld['license'] if ('license' in jsonld.keys()) else ''
 
-                                feeds2.append(feed)
+                                feeds2['data'].append(feed)
+
+    feeds2['metadata']['counts'] = len(feeds2['data'])
+    feeds2['metadata']['timeLastUpdated'] = str(datetime.datetime.now())
 
     return json.dumps(feeds2)
 
