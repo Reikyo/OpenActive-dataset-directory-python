@@ -436,5 +436,108 @@ def get_keycounts():
 
 # ----------------------------------------------------------------------------------------------------
 
+catalogueCollectionUrl = 'https://openactive.io/data-catalogs/data-catalog-collection.jsonld'
+
+catalogueUrls = []
+@application.route('/catalogueurls')
+def get_catalogueUrls():
+
+    try:
+        r1 = try_requests(catalogueCollectionUrl)
+    except:
+        print('ERROR: Can\'t get collection of catalogues')
+
+    if (    r1.status_code == 200
+        and r1.json()
+        and type(r1.json()) == dict
+        and 'hasPart' in r1.json().keys()
+        and type(r1.json()['hasPart']) == list
+    ):
+        for catalogueUrl in r1.json()['hasPart']: # Enable to do all catalogues
+        # for catalogueUrl in [r1.json()['hasPart'][0]]: # Enable to do only one catalogue for a test
+            if (    type(catalogueUrl) == str
+                and catalogueUrl not in catalogueUrls
+            ):
+                catalogueUrls.append(catalogueUrl)
+
+    return catalogueUrls
+
+# ----------------------------------------------------------------------------------------------------
+
+datasetUrls = []
+@application.route('/dataseturls')
+def get_datasetUrls():
+
+    for catalogueUrl in catalogueUrls:
+
+        try:
+            r2 = try_requests(catalogueUrl)
+        except:
+            print('ERROR: Can\'t get catalogue', catalogueUrl)
+            continue
+
+        if (    r2.status_code == 200
+            and r2.json()
+            and type(r2.json()) == dict
+            and 'dataset' in r2.json().keys()
+            and type(r2.json()['dataset']) == list
+        ):
+            for datasetUrl in r2.json()['dataset']: # Enable to do all datasets
+            # for datasetUrl in [r2.json()['dataset'][0]]: # Enable to do only one dataset for a test
+                if (    type(datasetUrl) == str
+                    and datasetUrl not in datasetUrls
+                ):
+                    datasetUrls.append(datasetUrl)
+
+    return datasetUrls
+
+# ----------------------------------------------------------------------------------------------------
+
+feedUrls = []
+@application.route('/feedurls')
+def get_feedUrls():
+
+    for datasetUrl in datasetUrls:
+
+        try:
+            r3 = try_requests(datasetUrl)
+        except:
+            # print('ERROR: Can\'t get dataset', catalogueUrl, '->', datasetUrl)
+            continue
+
+        if (    r3.status_code == 200
+            and r3.text
+            and type(r3.text) == str
+        ):
+
+            soup = BeautifulSoup(r3.text, 'html.parser')
+
+            if (not soup.head):
+                continue
+
+            for val in soup.head.find_all('script'):
+                if (    'type' in val.attrs.keys()
+                    and val['type'] == 'application/ld+json'
+                ):
+
+                    jsonld = json.loads(val.string)
+
+                    if (    type(jsonld) == dict
+                        and 'distribution' in jsonld.keys()
+                        and type(jsonld['distribution']) == list
+                    ):
+                        for jsonldDistribution in jsonld['distribution']: # Enable to do all feeds
+                        # for jsonldDistribution in [jsonld['distribution'][0]]: # Enable to do only one feed for a test
+                            if (    type(jsonldDistribution) == dict
+                                and 'contentUrl' in jsonldDistribution.keys()
+                                and type(jsonldDistribution['contentUrl']) == str
+                                and jsonldDistribution['contentUrl'] not in feedUrls
+                            ):
+                                feedUrls.append(jsonldDistribution['contentUrl'])
+
+    return feedUrls
+
+# ----------------------------------------------------------------------------------------------------
+
 if (__name__ == '__main__'):
     application.run()
