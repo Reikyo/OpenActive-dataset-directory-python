@@ -2,7 +2,7 @@ import datetime
 import json
 import requests
 from bs4 import BeautifulSoup
-from flask import Flask, jsonify
+from flask import Flask, jsonify, request
 
 # ----------------------------------------------------------------------------------------------------
 
@@ -444,34 +444,53 @@ catalogueUrls = {
     'data': [],
 }
 @application.route('/catalogueurls')
-def get_catalogueUrls():
+def get_catalogueUrls(
+    doRefresh = None
+):
 
-    try:
-        r1 = try_requests(catalogueCollectionUrl)
-    except:
-        print('ERROR: Can\'t get collection of catalogues')
+    doRefresh = request.args.get('refresh', default=False, type=lambda arg: arg.lower()=='true')
+    doMetadata = request.args.get('metadata', default=True, type=lambda arg: arg.lower()=='true')
+    doFlatten = request.args.get('flatten', default=False, type=lambda arg: arg.lower()=='true')
 
     # ----------------------------------------------------------------------------------------------------
 
-    if (    r1.status_code == 200
-        and r1.json()
-        and type(r1.json()) == dict
-        and 'hasPart' in r1.json().keys()
-        and type(r1.json()['hasPart']) == list
+    if (    not catalogueUrls['metadata']['timeLastUpdated']
+        or  doRefresh
     ):
-        for catalogueUrl in r1.json()['hasPart']: # Enable to do all catalogues
-        # for catalogueUrl in [r1.json()['hasPart'][0]]: # Enable to do only one catalogue for a test
-            if (    type(catalogueUrl) == str
-                and catalogueUrl not in catalogueUrls['data']
-            ):
-                catalogueUrls['data'].append(catalogueUrl)
+
+        try:
+            r1 = try_requests(catalogueCollectionUrl)
+        except:
+            print('ERROR: Can\'t get collection of catalogues')
+
+        # ----------------------------------------------------------------------------------------------------
+
+        if (    r1.status_code == 200
+            and r1.json()
+            and type(r1.json()) == dict
+            and 'hasPart' in r1.json().keys()
+            and type(r1.json()['hasPart']) == list
+        ):
+            for catalogueUrl in r1.json()['hasPart']: # Enable to do all catalogues
+            # for catalogueUrl in [r1.json()['hasPart'][0]]: # Enable to do only one catalogue for a test
+                if (    type(catalogueUrl) == str
+                    and catalogueUrl not in catalogueUrls['data']
+                ):
+                    catalogueUrls['data'].append(catalogueUrl)
+
+        # ----------------------------------------------------------------------------------------------------
+
+        catalogueUrls['metadata']['counts'] = len(catalogueUrls['data'])
+        catalogueUrls['metadata']['timeLastUpdated'] = str(datetime.datetime.now())
 
     # ----------------------------------------------------------------------------------------------------
 
-    catalogueUrls['metadata']['counts'] = len(catalogueUrls['data'])
-    catalogueUrls['metadata']['timeLastUpdated'] = str(datetime.datetime.now())
-
-    return json.dumps(catalogueUrls)
+    if (    doFlatten
+        or  not doMetadata
+    ):
+        return json.dumps(catalogueUrls['data'])
+    else:
+        return json.dumps(catalogueUrls)
 
 # ----------------------------------------------------------------------------------------------------
 
@@ -483,62 +502,87 @@ datasetUrls = {
     'data': {},
 }
 @application.route('/dataseturls')
-def get_datasetUrls():
+def get_datasetUrls(
+    doRefresh = None
+):
 
-    if (catalogueUrls['metadata']['counts'] == 0):
-        get_catalogueUrls()
-
-    # ----------------------------------------------------------------------------------------------------
-
-    for catalogueUrl in catalogueUrls['data']:
-
-        catalogueDatasetUrls = {
-            'metadata': {
-                'counts': 0,
-                'timeLastUpdated': None,
-            },
-            'data': [],
-        }
-
-        # ----------------------------------------------------------------------------------------------------
-
-        try:
-            r2 = try_requests(catalogueUrl)
-        except:
-            print('ERROR: Can\'t get catalogue', catalogueUrl)
-            continue
-
-        # ----------------------------------------------------------------------------------------------------
-
-        if (    r2.status_code == 200
-            and r2.json()
-            and type(r2.json()) == dict
-            and 'dataset' in r2.json().keys()
-            and type(r2.json()['dataset']) == list
-        ):
-            for datasetUrl in r2.json()['dataset']: # Enable to do all datasets
-            # for datasetUrl in [r2.json()['dataset'][0]]: # Enable to do only one dataset for a test
-                if (    type(datasetUrl) == str
-                    and datasetUrl not in catalogueDatasetUrls['data']
-                ):
-                    catalogueDatasetUrls['data'].append(datasetUrl)
-
-        # ----------------------------------------------------------------------------------------------------
-
-        catalogueDatasetUrls['metadata']['counts'] = len(catalogueDatasetUrls['data'])
-        catalogueDatasetUrls['metadata']['timeLastUpdated'] = str(datetime.datetime.now())
-
-        datasetUrls['data'][catalogueUrl] = catalogueDatasetUrls
+    doRefresh = request.args.get('refresh', default=False, type=lambda arg: arg.lower()=='true')
+    doMetadata = request.args.get('metadata', default=True, type=lambda arg: arg.lower()=='true')
+    doFlatten = request.args.get('flatten', default=False, type=lambda arg: arg.lower()=='true')
 
     # ----------------------------------------------------------------------------------------------------
 
-    datasetUrls['metadata']['counts'] = sum([
-        val['metadata']['counts']
-        for val in datasetUrls['data'].values()
-    ])
-    datasetUrls['metadata']['timeLastUpdated'] = str(datetime.datetime.now())
+    if (    not datasetUrls['metadata']['timeLastUpdated']
+        or  doRefresh
+    ):
 
-    return json.dumps(datasetUrls)
+        get_catalogueUrls(doRefresh)
+
+        # ----------------------------------------------------------------------------------------------------
+
+        for catalogueUrl in catalogueUrls['data']:
+
+            catalogueDatasetUrls = {
+                'metadata': {
+                    'counts': 0,
+                    'timeLastUpdated': None,
+                },
+                'data': [],
+            }
+
+            # ----------------------------------------------------------------------------------------------------
+
+            try:
+                r2 = try_requests(catalogueUrl)
+            except:
+                print('ERROR: Can\'t get catalogue', catalogueUrl)
+                continue
+
+            # ----------------------------------------------------------------------------------------------------
+
+            if (    r2.status_code == 200
+                and r2.json()
+                and type(r2.json()) == dict
+                and 'dataset' in r2.json().keys()
+                and type(r2.json()['dataset']) == list
+            ):
+                for datasetUrl in r2.json()['dataset']: # Enable to do all datasets
+                # for datasetUrl in [r2.json()['dataset'][0]]: # Enable to do only one dataset for a test
+                    if (    type(datasetUrl) == str
+                        and datasetUrl not in catalogueDatasetUrls['data']
+                    ):
+                        catalogueDatasetUrls['data'].append(datasetUrl)
+
+            # ----------------------------------------------------------------------------------------------------
+
+            catalogueDatasetUrls['metadata']['counts'] = len(catalogueDatasetUrls['data'])
+            catalogueDatasetUrls['metadata']['timeLastUpdated'] = str(datetime.datetime.now())
+
+            datasetUrls['data'][catalogueUrl] = catalogueDatasetUrls
+
+        # ----------------------------------------------------------------------------------------------------
+
+        datasetUrls['metadata']['counts'] = sum([
+            val['metadata']['counts']
+            for val in datasetUrls['data'].values()
+        ])
+        datasetUrls['metadata']['timeLastUpdated'] = str(datetime.datetime.now())
+
+    # ----------------------------------------------------------------------------------------------------
+
+    if (doFlatten):
+        return json.dumps([
+            val2
+            for val1 in datasetUrls['data'].values()
+            for val2 in val1['data']
+        ])
+    elif (not doMetadata):
+        return json.dumps({
+            key: val['data']
+            for key,val in datasetUrls['data'].items()
+        })
+    else:
+        return json.dumps(datasetUrls)
 
 # ----------------------------------------------------------------------------------------------------
 
@@ -550,99 +594,128 @@ feedUrls = {
     'data': {},
 }
 @application.route('/feedurls')
-def get_feedUrls():
+def get_feedUrls(
+    doRefresh = None
+):
 
-    if (datasetUrls['metadata']['counts'] == 0):
-        get_datasetUrls()
+    doRefresh = request.args.get('refresh', default=False, type=lambda arg: arg.lower()=='true')
+    doMetadata = request.args.get('metadata', default=True, type=lambda arg: arg.lower()=='true')
+    doFlatten = request.args.get('flatten', default=False, type=lambda arg: arg.lower()=='true')
 
     # ----------------------------------------------------------------------------------------------------
 
-    for catalogueUrl,catalogueDatasetUrls in datasetUrls['data'].items():
+    if (    not feedUrls['metadata']['timeLastUpdated']
+        or  doRefresh
+    ):
 
-        feedUrls['data'][catalogueUrl] = {
-            'metadata': {
-                'counts': 0,
-                'timeLastUpdated': None,
-            },
-            'data': {},
-        }
+        get_datasetUrls(doRefresh)
 
         # ----------------------------------------------------------------------------------------------------
 
-        for datasetUrl in catalogueDatasetUrls['data']:
+        for catalogueUrl,catalogueDatasetUrls in datasetUrls['data'].items():
 
-            datasetFeedUrls = {
+            feedUrls['data'][catalogueUrl] = {
                 'metadata': {
                     'counts': 0,
                     'timeLastUpdated': None,
                 },
-                'data': [],
+                'data': {},
             }
 
             # ----------------------------------------------------------------------------------------------------
 
-            try:
-                r3 = try_requests(datasetUrl)
-            except:
-                print('ERROR: Can\'t get dataset', catalogueUrl, '->', datasetUrl)
-                continue
+            for datasetUrl in catalogueDatasetUrls['data']:
 
-            # ----------------------------------------------------------------------------------------------------
+                datasetFeedUrls = {
+                    'metadata': {
+                        'counts': 0,
+                        'timeLastUpdated': None,
+                    },
+                    'data': [],
+                }
 
-            if (    r3.status_code == 200
-                and r3.text
-                and type(r3.text) == str
-            ):
+                # ----------------------------------------------------------------------------------------------------
 
-                soup = BeautifulSoup(r3.text, 'html.parser')
-
-                if (not soup.head):
+                try:
+                    r3 = try_requests(datasetUrl)
+                except:
+                    print('ERROR: Can\'t get dataset', catalogueUrl, '->', datasetUrl)
                     continue
 
-                for val in soup.head.find_all('script'):
-                    if (    'type' in val.attrs.keys()
-                        and val['type'] == 'application/ld+json'
-                    ):
+                # ----------------------------------------------------------------------------------------------------
 
-                        jsonld = json.loads(val.string)
+                if (    r3.status_code == 200
+                    and r3.text
+                    and type(r3.text) == str
+                ):
 
-                        if (    type(jsonld) == dict
-                            and 'distribution' in jsonld.keys()
-                            and type(jsonld['distribution']) == list
+                    soup = BeautifulSoup(r3.text, 'html.parser')
+
+                    if (not soup.head):
+                        continue
+
+                    for val in soup.head.find_all('script'):
+                        if (    'type' in val.attrs.keys()
+                            and val['type'] == 'application/ld+json'
                         ):
-                            for jsonldDistribution in jsonld['distribution']: # Enable to do all feeds
-                            # for jsonldDistribution in [jsonld['distribution'][0]]: # Enable to do only one feed for a test
-                                if (    type(jsonldDistribution) == dict
-                                    and 'contentUrl' in jsonldDistribution.keys()
-                                    and type(jsonldDistribution['contentUrl']) == str
-                                    and jsonldDistribution['contentUrl'] not in datasetFeedUrls['data']
-                                ):
-                                    datasetFeedUrls['data'].append(jsonldDistribution['contentUrl'])
+
+                            jsonld = json.loads(val.string)
+
+                            if (    type(jsonld) == dict
+                                and 'distribution' in jsonld.keys()
+                                and type(jsonld['distribution']) == list
+                            ):
+                                for jsonldDistribution in jsonld['distribution']: # Enable to do all feeds
+                                # for jsonldDistribution in [jsonld['distribution'][0]]: # Enable to do only one feed for a test
+                                    if (    type(jsonldDistribution) == dict
+                                        and 'contentUrl' in jsonldDistribution.keys()
+                                        and type(jsonldDistribution['contentUrl']) == str
+                                        and jsonldDistribution['contentUrl'] not in datasetFeedUrls['data']
+                                    ):
+                                        datasetFeedUrls['data'].append(jsonldDistribution['contentUrl'])
+
+                # ----------------------------------------------------------------------------------------------------
+
+                datasetFeedUrls['metadata']['counts'] = len(datasetFeedUrls['data'])
+                datasetFeedUrls['metadata']['timeLastUpdated'] = str(datetime.datetime.now())
+
+                feedUrls['data'][catalogueUrl]['data'][datasetUrl] = datasetFeedUrls
 
             # ----------------------------------------------------------------------------------------------------
 
-            datasetFeedUrls['metadata']['counts'] = len(datasetFeedUrls['data'])
-            datasetFeedUrls['metadata']['timeLastUpdated'] = str(datetime.datetime.now())
-
-            feedUrls['data'][catalogueUrl]['data'][datasetUrl] = datasetFeedUrls
+            feedUrls['data'][catalogueUrl]['metadata']['counts'] = sum([
+                val['metadata']['counts']
+                for val in feedUrls['data'][catalogueUrl]['data'].values()
+            ])
+            feedUrls['data'][catalogueUrl]['metadata']['timeLastUpdated'] = str(datetime.datetime.now())
 
         # ----------------------------------------------------------------------------------------------------
 
-        feedUrls['data'][catalogueUrl]['metadata']['counts'] = sum([
+        feedUrls['metadata']['counts'] = sum([
             val['metadata']['counts']
-            for val in feedUrls['data'][catalogueUrl]['data'].values()
+            for val in feedUrls['data'].values()
         ])
-        feedUrls['data'][catalogueUrl]['metadata']['timeLastUpdated'] = str(datetime.datetime.now())
+        feedUrls['metadata']['timeLastUpdated'] = str(datetime.datetime.now())
 
     # ----------------------------------------------------------------------------------------------------
 
-    feedUrls['metadata']['counts'] = sum([
-        val['metadata']['counts']
-        for val in feedUrls['data'].values()
-    ])
-    feedUrls['metadata']['timeLastUpdated'] = str(datetime.datetime.now())
-
-    return json.dumps(feedUrls)
+    if (doFlatten):
+        return json.dumps([
+            val3
+            for val1 in feedUrls['data'].values()
+            for val2 in val1['data'].values()
+            for val3 in val2['data']
+        ])
+    elif (not doMetadata):
+        return json.dumps({
+            key1: {
+                key2: val2['data']
+                for key2,val2 in val1['data'].items()
+            }
+            for key1,val1 in feedUrls['data'].items()
+        })
+    else:
+        return json.dumps(feedUrls)
 
 # ----------------------------------------------------------------------------------------------------
 
@@ -654,111 +727,140 @@ feeds2 = {
     'data': {},
 }
 @application.route('/feeds2')
-def get_feeds2():
+def get_feeds2(
+    doRefresh = None
+):
 
-    if (datasetUrls['metadata']['counts'] == 0):
-        get_datasetUrls()
+    doRefresh = request.args.get('refresh', default=False, type=lambda arg: arg.lower()=='true')
+    doMetadata = request.args.get('metadata', default=True, type=lambda arg: arg.lower()=='true')
+    doFlatten = request.args.get('flatten', default=False, type=lambda arg: arg.lower()=='true')
 
     # ----------------------------------------------------------------------------------------------------
 
-    for catalogueUrl,catalogueDatasetUrls in datasetUrls['data'].items():
+    if (    not feeds2['metadata']['timeLastUpdated']
+        or  doRefresh
+    ):
 
-        feeds2['data'][catalogueUrl] = {
-            'metadata': {
-                'counts': 0,
-                'timeLastUpdated': None,
-            },
-            'data': {},
-        }
+        get_datasetUrls(doRefresh)
 
         # ----------------------------------------------------------------------------------------------------
 
-        for datasetUrl in catalogueDatasetUrls['data']:
+        for catalogueUrl,catalogueDatasetUrls in datasetUrls['data'].items():
 
-            datasetFeedUrls = {
+            feeds2['data'][catalogueUrl] = {
                 'metadata': {
                     'counts': 0,
                     'timeLastUpdated': None,
                 },
-                'data': [],
+                'data': {},
             }
 
             # ----------------------------------------------------------------------------------------------------
 
-            try:
-                r3 = try_requests(datasetUrl)
-            except:
-                print('ERROR: Can\'t get dataset', catalogueUrl, '->', datasetUrl)
-                continue
+            for datasetUrl in catalogueDatasetUrls['data']:
 
-            # ----------------------------------------------------------------------------------------------------
+                datasetFeedUrls = {
+                    'metadata': {
+                        'counts': 0,
+                        'timeLastUpdated': None,
+                    },
+                    'data': [],
+                }
 
-            if (    r3.status_code == 200
-                and r3.text
-                and type(r3.text) == str
-            ):
+                # ----------------------------------------------------------------------------------------------------
 
-                soup = BeautifulSoup(r3.text, 'html.parser')
-
-                if (not soup.head):
+                try:
+                    r3 = try_requests(datasetUrl)
+                except:
+                    print('ERROR: Can\'t get dataset', catalogueUrl, '->', datasetUrl)
                     continue
 
-                for val in soup.head.find_all('script'):
-                    if (    'type' in val.attrs.keys()
-                        and val['type'] == 'application/ld+json'
-                    ):
+                # ----------------------------------------------------------------------------------------------------
 
-                        jsonld = json.loads(val.string)
+                if (    r3.status_code == 200
+                    and r3.text
+                    and type(r3.text) == str
+                ):
 
-                        if (    type(jsonld) == dict
-                            and 'distribution' in jsonld.keys()
-                            and type(jsonld['distribution']) == list
+                    soup = BeautifulSoup(r3.text, 'html.parser')
+
+                    if (not soup.head):
+                        continue
+
+                    for val in soup.head.find_all('script'):
+                        if (    'type' in val.attrs.keys()
+                            and val['type'] == 'application/ld+json'
                         ):
-                            for jsonldDistribution in jsonld['distribution']: # Enable to do all feeds
-                            # for jsonldDistribution in [jsonld['distribution'][0]]: # Enable to do only one feed for a test
-                                if (type(jsonldDistribution) == dict):
 
-                                    feed = {}
+                            jsonld = json.loads(val.string)
 
-                                    feed['feedUrl'] = jsonldDistribution['contentUrl'] if ('contentUrl' in jsonldDistribution.keys()) else ''
-                                    feed['feedName'] = jsonldDistribution['name'] if ('name' in jsonldDistribution.keys()) else ''
-                                    # Should match datasetUrl from r2.json()['dataset']:
-                                    feed['datasetUrl'] = jsonld['url'] if ('url' in jsonld.keys()) else ''
-                                    feed['datasetName'] = jsonld['name'] if ('name' in jsonld.keys()) else ''
-                                    feed['datasetPublisherName'] = jsonld['publisher']['name'] if ('publisher' in jsonld.keys()) and (type(jsonld['publisher']) == dict) and ('name' in jsonld['publisher'].keys()) else ''
-                                    # # Should match catalogueUrl from r1.json()['hasPart']:
-                                    # feed['catalogueUrl'] = r2.json()['id'] if ('id' in r2.json().keys()) else r2.json()['@id'] if ('@id' in r2.json().keys()) else ''
-                                    # # The catalogue publisher name is the closest we have to a catalogue name proper:
-                                    # feed['cataloguePublisherName'] = r2.json()['publisher']['name'] if ('publisher' in r2.json().keys()) and (type(r2.json()['publisher']) == dict) and ('name' in r2.json()['publisher'].keys()) else ''
-                                    feed['discussionUrl'] = jsonld['discussionUrl'] if ('discussionUrl' in jsonld.keys()) else ''
-                                    feed['licenseUrl'] = jsonld['license'] if ('license' in jsonld.keys()) else ''
+                            if (    type(jsonld) == dict
+                                and 'distribution' in jsonld.keys()
+                                and type(jsonld['distribution']) == list
+                            ):
+                                for jsonldDistribution in jsonld['distribution']: # Enable to do all feeds
+                                # for jsonldDistribution in [jsonld['distribution'][0]]: # Enable to do only one feed for a test
+                                    if (type(jsonldDistribution) == dict):
 
-                                    datasetFeedUrls['data'].append(feed)
+                                        feed = {}
+
+                                        feed['feedUrl'] = jsonldDistribution['contentUrl'] if ('contentUrl' in jsonldDistribution.keys()) else ''
+                                        feed['feedName'] = jsonldDistribution['name'] if ('name' in jsonldDistribution.keys()) else ''
+                                        # Should match datasetUrl from r2.json()['dataset']:
+                                        feed['datasetUrl'] = jsonld['url'] if ('url' in jsonld.keys()) else ''
+                                        feed['datasetName'] = jsonld['name'] if ('name' in jsonld.keys()) else ''
+                                        feed['datasetPublisherName'] = jsonld['publisher']['name'] if ('publisher' in jsonld.keys()) and (type(jsonld['publisher']) == dict) and ('name' in jsonld['publisher'].keys()) else ''
+                                        # # Should match catalogueUrl from r1.json()['hasPart']:
+                                        # feed['catalogueUrl'] = r2.json()['id'] if ('id' in r2.json().keys()) else r2.json()['@id'] if ('@id' in r2.json().keys()) else ''
+                                        # # The catalogue publisher name is the closest we have to a catalogue name proper:
+                                        # feed['cataloguePublisherName'] = r2.json()['publisher']['name'] if ('publisher' in r2.json().keys()) and (type(r2.json()['publisher']) == dict) and ('name' in r2.json()['publisher'].keys()) else ''
+                                        feed['discussionUrl'] = jsonld['discussionUrl'] if ('discussionUrl' in jsonld.keys()) else ''
+                                        feed['licenseUrl'] = jsonld['license'] if ('license' in jsonld.keys()) else ''
+
+                                        datasetFeedUrls['data'].append(feed)
+
+                # ----------------------------------------------------------------------------------------------------
+
+                datasetFeedUrls['metadata']['counts'] = len(datasetFeedUrls['data'])
+                datasetFeedUrls['metadata']['timeLastUpdated'] = str(datetime.datetime.now())
+
+                feeds2['data'][catalogueUrl]['data'][datasetUrl] = datasetFeedUrls
 
             # ----------------------------------------------------------------------------------------------------
 
-            datasetFeedUrls['metadata']['counts'] = len(datasetFeedUrls['data'])
-            datasetFeedUrls['metadata']['timeLastUpdated'] = str(datetime.datetime.now())
-
-            feeds2['data'][catalogueUrl]['data'][datasetUrl] = datasetFeedUrls
+            feeds2['data'][catalogueUrl]['metadata']['counts'] = sum([
+                val['metadata']['counts']
+                for val in feeds2['data'][catalogueUrl]['data'].values()
+            ])
+            feeds2['data'][catalogueUrl]['metadata']['timeLastUpdated'] = str(datetime.datetime.now())
 
         # ----------------------------------------------------------------------------------------------------
 
-        feeds2['data'][catalogueUrl]['metadata']['counts'] = sum([
+        feeds2['metadata']['counts'] = sum([
             val['metadata']['counts']
-            for val in feeds2['data'][catalogueUrl]['data'].values()
+            for val in feeds2['data'].values()
         ])
-        feeds2['data'][catalogueUrl]['metadata']['timeLastUpdated'] = str(datetime.datetime.now())
+        feeds2['metadata']['timeLastUpdated'] = str(datetime.datetime.now())
 
     # ----------------------------------------------------------------------------------------------------
 
-    feeds2['metadata']['counts'] = sum([
-        val['metadata']['counts']
-        for val in feeds2['data'].values()
-    ])
-    feeds2['metadata']['timeLastUpdated'] = str(datetime.datetime.now())
-
-    return json.dumps(feeds2)
+    if (doFlatten):
+        return json.dumps([
+            val3
+            for val1 in feeds2['data'].values()
+            for val2 in val1['data'].values()
+            for val3 in val2['data']
+        ])
+    elif (not doMetadata):
+        return json.dumps({
+            key1: {
+                key2: val2['data']
+                for key2,val2 in val1['data'].items()
+            }
+            for key1,val1 in feeds2['data'].items()
+        })
+    else:
+        return json.dumps(feeds2)
 
 # ----------------------------------------------------------------------------------------------------
 
