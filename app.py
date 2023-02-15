@@ -1,3 +1,4 @@
+import copy
 import datetime
 import json
 import requests
@@ -179,139 +180,6 @@ def get_datasetUrls(
 
 # ----------------------------------------------------------------------------------------------------
 
-feedUrls = {
-    'metadata': {
-        'counts': 0,
-        'timeLastUpdated': None,
-    },
-    'data': {},
-}
-@application.route('/feedurls')
-def get_feedUrls(
-    doRefresh = None
-):
-
-    doRefresh = request.args.get('refresh', default=False, type=lambda arg: arg.lower()=='true')
-    doMetadata = request.args.get('metadata', default=True, type=lambda arg: arg.lower()=='true')
-    doFlatten = request.args.get('flatten', default=False, type=lambda arg: arg.lower()=='true')
-
-    # ----------------------------------------------------------------------------------------------------
-
-    if (    not feedUrls['metadata']['timeLastUpdated']
-        or  doRefresh
-    ):
-
-        get_datasetUrls(doRefresh)
-
-        # ----------------------------------------------------------------------------------------------------
-
-        for catalogueUrl,catalogueDatasetUrls in datasetUrls['data'].items():
-
-            feedUrls['data'][catalogueUrl] = {
-                'metadata': {
-                    'counts': 0,
-                    'timeLastUpdated': None,
-                },
-                'data': {},
-            }
-
-            # ----------------------------------------------------------------------------------------------------
-
-            for datasetUrl in catalogueDatasetUrls['data']:
-
-                datasetFeedUrls = {
-                    'metadata': {
-                        'counts': 0,
-                        'timeLastUpdated': None,
-                    },
-                    'data': [],
-                }
-
-                # ----------------------------------------------------------------------------------------------------
-
-                try:
-                    r3 = try_requests(datasetUrl)
-                except:
-                    print('ERROR: Can\'t get dataset', catalogueUrl, '->', datasetUrl)
-                    continue
-
-                # ----------------------------------------------------------------------------------------------------
-
-                if (    r3.status_code == 200
-                    and r3.text
-                    and type(r3.text) == str
-                ):
-
-                    soup = BeautifulSoup(r3.text, 'html.parser')
-
-                    if (not soup.head):
-                        continue
-
-                    for val in soup.head.find_all('script'):
-                        if (    'type' in val.attrs.keys()
-                            and val['type'] == 'application/ld+json'
-                        ):
-
-                            jsonld = json.loads(val.string)
-
-                            if (    type(jsonld) == dict
-                                and 'distribution' in jsonld.keys()
-                                and type(jsonld['distribution']) == list
-                            ):
-                                for jsonldDistribution in jsonld['distribution']: # Enable to do all feeds
-                                # for jsonldDistribution in [jsonld['distribution'][0]]: # Enable to do only one feed for a test
-                                    if (    type(jsonldDistribution) == dict
-                                        and 'contentUrl' in jsonldDistribution.keys()
-                                        and type(jsonldDistribution['contentUrl']) == str
-                                        and jsonldDistribution['contentUrl'] not in datasetFeedUrls['data']
-                                    ):
-                                        datasetFeedUrls['data'].append(jsonldDistribution['contentUrl'])
-
-                # ----------------------------------------------------------------------------------------------------
-
-                datasetFeedUrls['metadata']['counts'] = len(datasetFeedUrls['data'])
-                datasetFeedUrls['metadata']['timeLastUpdated'] = str(datetime.datetime.now())
-
-                feedUrls['data'][catalogueUrl]['data'][datasetUrl] = datasetFeedUrls
-
-            # ----------------------------------------------------------------------------------------------------
-
-            feedUrls['data'][catalogueUrl]['metadata']['counts'] = sum([
-                val['metadata']['counts']
-                for val in feedUrls['data'][catalogueUrl]['data'].values()
-            ])
-            feedUrls['data'][catalogueUrl]['metadata']['timeLastUpdated'] = str(datetime.datetime.now())
-
-        # ----------------------------------------------------------------------------------------------------
-
-        feedUrls['metadata']['counts'] = sum([
-            val['metadata']['counts']
-            for val in feedUrls['data'].values()
-        ])
-        feedUrls['metadata']['timeLastUpdated'] = str(datetime.datetime.now())
-
-    # ----------------------------------------------------------------------------------------------------
-
-    if (doFlatten):
-        return json.dumps([
-            val3
-            for val1 in feedUrls['data'].values()
-            for val2 in val1['data'].values()
-            for val3 in val2['data']
-        ])
-    elif (not doMetadata):
-        return json.dumps({
-            key1: {
-                key2: val2['data']
-                for key2,val2 in val1['data'].items()
-            }
-            for key1,val1 in feedUrls['data'].items()
-        })
-    else:
-        return json.dumps(feedUrls)
-
-# ----------------------------------------------------------------------------------------------------
-
 feeds = {
     'metadata': {
         'counts': 0,
@@ -454,6 +322,57 @@ def get_feeds(
         })
     else:
         return json.dumps(feeds)
+
+# ----------------------------------------------------------------------------------------------------
+
+feedUrls = None
+@application.route('/feedurls')
+def get_feedUrls(
+    doRefresh = None
+):
+
+    doRefresh = request.args.get('refresh', default=False, type=lambda arg: arg.lower()=='true')
+    doMetadata = request.args.get('metadata', default=True, type=lambda arg: arg.lower()=='true')
+    doFlatten = request.args.get('flatten', default=False, type=lambda arg: arg.lower()=='true')
+
+    # ----------------------------------------------------------------------------------------------------
+
+    global feedUrls
+
+    if (    not feedUrls
+        or  doRefresh
+    ):
+
+        get_feeds(doRefresh)
+
+        feedUrls = copy.deepcopy(feeds)
+
+        for catalogueUrl in feedUrls['data'].keys():
+            for datasetUrl in feedUrls['data'][catalogueUrl]['data'].keys():
+                feedUrls['data'][catalogueUrl]['data'][datasetUrl]['data'] = [
+                    feed['feedUrl']
+                    for feed in feedUrls['data'][catalogueUrl]['data'][datasetUrl]['data']
+                ]
+
+    # ----------------------------------------------------------------------------------------------------
+
+    if (doFlatten):
+        return json.dumps([
+            val3
+            for val1 in feedUrls['data'].values()
+            for val2 in val1['data'].values()
+            for val3 in val2['data']
+        ])
+    elif (not doMetadata):
+        return json.dumps({
+            key1: {
+                key2: val2['data']
+                for key2,val2 in val1['data'].items()
+            }
+            for key1,val1 in feedUrls['data'].items()
+        })
+    else:
+        return json.dumps(feedUrls)
 
 # ----------------------------------------------------------------------------------------------------
 
