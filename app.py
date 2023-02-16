@@ -4,12 +4,18 @@ import json
 import requests
 from bs4 import BeautifulSoup
 from flask import Flask, jsonify, request
+from os.path import exists
 
 # ----------------------------------------------------------------------------------------------------
 
 application = Flask(__name__)
 
 catalogueCollectionUrl = 'https://openactive.io/data-catalogs/data-catalog-collection.jsonld'
+
+dirNameCache = './cache/'
+fileNameCatalogueUrls = 'catalogueUrls.json'
+fileNameDatasetUrls = 'datasetUrls.json'
+fileNameFeeds = 'feeds.json'
 
 # ----------------------------------------------------------------------------------------------------
 
@@ -30,21 +36,25 @@ def try_requests(url):
 
 # ----------------------------------------------------------------------------------------------------
 
-catalogueUrls = {
-    'metadata': {
-        'counts': 0,
-        'timeLastUpdated': None,
-    },
-    'data': [],
-}
+if (exists(dirNameCache + fileNameCatalogueUrls)):
+    catalogueUrls = json.load(open(dirNameCache + fileNameCatalogueUrls, 'r'))
+else:
+    catalogueUrls = {
+        'metadata': {
+            'counts': 0,
+            'timeLastUpdated': None,
+        },
+        'data': [],
+    }
+
 @application.route('/catalogueurls')
 def get_catalogueUrls(
-    doRefresh = None
+    doRefresh = False
 ):
 
     doRefresh = request.args.get('refresh', default=False, type=lambda arg: arg.lower()=='true')
-    doMetadata = request.args.get('metadata', default=True, type=lambda arg: arg.lower()=='true')
     doFlatten = request.args.get('flatten', default=False, type=lambda arg: arg.lower()=='true')
+    doMetadata = request.args.get('metadata', default=False, type=lambda arg: arg.lower()=='true')
 
     # ----------------------------------------------------------------------------------------------------
 
@@ -79,6 +89,13 @@ def get_catalogueUrls(
 
     # ----------------------------------------------------------------------------------------------------
 
+    if (    not exists(dirNameCache + fileNameCatalogueUrls)
+        or  doRefresh
+    ):
+        json.dump(catalogueUrls, open(dirNameCache + fileNameCatalogueUrls, 'w'))
+
+    # ----------------------------------------------------------------------------------------------------
+
     if (    doFlatten
         or  not doMetadata
     ):
@@ -88,21 +105,25 @@ def get_catalogueUrls(
 
 # ----------------------------------------------------------------------------------------------------
 
-datasetUrls = {
-    'metadata': {
-        'counts': 0,
-        'timeLastUpdated': None,
-    },
-    'data': {},
-}
+if (exists(dirNameCache + fileNameDatasetUrls)):
+    datasetUrls = json.load(open(dirNameCache + fileNameDatasetUrls, 'r'))
+else:
+    datasetUrls = {
+        'metadata': {
+            'counts': 0,
+            'timeLastUpdated': None,
+        },
+        'data': {},
+    }
+
 @application.route('/dataseturls')
 def get_datasetUrls(
-    doRefresh = None
+    doRefresh = False
 ):
 
     doRefresh = request.args.get('refresh', default=False, type=lambda arg: arg.lower()=='true')
-    doMetadata = request.args.get('metadata', default=True, type=lambda arg: arg.lower()=='true')
     doFlatten = request.args.get('flatten', default=False, type=lambda arg: arg.lower()=='true')
+    doMetadata = request.args.get('metadata', default=False, type=lambda arg: arg.lower()=='true')
 
     # ----------------------------------------------------------------------------------------------------
 
@@ -164,6 +185,13 @@ def get_datasetUrls(
 
     # ----------------------------------------------------------------------------------------------------
 
+    if (    not exists(dirNameCache + fileNameDatasetUrls)
+        or  doRefresh
+    ):
+        json.dump(datasetUrls, open(dirNameCache + fileNameDatasetUrls, 'w'))
+
+    # ----------------------------------------------------------------------------------------------------
+
     if (doFlatten):
         return json.dumps([
             val2
@@ -180,21 +208,25 @@ def get_datasetUrls(
 
 # ----------------------------------------------------------------------------------------------------
 
-feeds = {
-    'metadata': {
-        'counts': 0,
-        'timeLastUpdated': None,
-    },
-    'data': {},
-}
+if (exists(dirNameCache + fileNameFeeds)):
+    feeds = json.load(open(dirNameCache + fileNameFeeds, 'r'))
+else:
+    feeds = {
+        'metadata': {
+            'counts': 0,
+            'timeLastUpdated': None,
+        },
+        'data': {},
+    }
+
 @application.route('/feeds')
 def get_feeds(
-    doRefresh = None
+    doRefresh = False
 ):
 
     doRefresh = request.args.get('refresh', default=False, type=lambda arg: arg.lower()=='true')
-    doMetadata = request.args.get('metadata', default=True, type=lambda arg: arg.lower()=='true')
     doFlatten = request.args.get('flatten', default=False, type=lambda arg: arg.lower()=='true')
+    doMetadata = request.args.get('metadata', default=False, type=lambda arg: arg.lower()=='true')
 
     # ----------------------------------------------------------------------------------------------------
 
@@ -305,6 +337,13 @@ def get_feeds(
 
     # ----------------------------------------------------------------------------------------------------
 
+    if (    not exists(dirNameCache + fileNameFeeds)
+        or  doRefresh
+    ):
+        json.dump(feeds, open(dirNameCache + fileNameFeeds, 'w'))
+
+    # ----------------------------------------------------------------------------------------------------
+
     if (doFlatten):
         return json.dumps([
             val3
@@ -326,14 +365,15 @@ def get_feeds(
 # ----------------------------------------------------------------------------------------------------
 
 feedUrls = None
+
 @application.route('/feedurls')
 def get_feedUrls(
-    doRefresh = None
+    doRefresh = False
 ):
 
     doRefresh = request.args.get('refresh', default=False, type=lambda arg: arg.lower()=='true')
-    doMetadata = request.args.get('metadata', default=True, type=lambda arg: arg.lower()=='true')
     doFlatten = request.args.get('flatten', default=False, type=lambda arg: arg.lower()=='true')
+    doMetadata = request.args.get('metadata', default=False, type=lambda arg: arg.lower()=='true')
 
     # ----------------------------------------------------------------------------------------------------
 
