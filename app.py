@@ -16,6 +16,7 @@ dirNameCache = './cache/'
 fileNameCatalogueUrls = 'catalogueUrls.json'
 fileNameDatasetUrls = 'datasetUrls.json'
 fileNameFeeds = 'feeds.json'
+fileNameOpportunities = 'opportunities.json'
 
 # ----------------------------------------------------------------------------------------------------
 
@@ -238,7 +239,7 @@ def get_feeds(
 
         # ----------------------------------------------------------------------------------------------------
 
-        for catalogueUrl,catalogueDatasetUrls in datasetUrls['data'].items():
+        for catalogueUrl in datasetUrls['data'].keys():
 
             feeds['data'][catalogueUrl] = {
                 'metadata': {
@@ -250,9 +251,9 @@ def get_feeds(
 
             # ----------------------------------------------------------------------------------------------------
 
-            for datasetUrl in catalogueDatasetUrls['data']:
+            for datasetUrl in datasetUrls['data'][catalogueUrl]['data']:
 
-                datasetFeedUrls = {
+                datasetFeeds = {
                     'metadata': {
                         'counts': 0,
                         'timeLastUpdated': None,
@@ -291,33 +292,36 @@ def get_feeds(
                                 and 'distribution' in jsonld.keys()
                                 and type(jsonld['distribution']) == list
                             ):
-                                for jsonldDistribution in jsonld['distribution']: # Enable to do all feeds
-                                # for jsonldDistribution in [jsonld['distribution'][0]]: # Enable to do only one feed for a test
-                                    if (type(jsonldDistribution) == dict):
+                                for feedInfo in jsonld['distribution']: # Enable to do all feeds
+                                # for feedInfo in [jsonld['distribution'][0]]: # Enable to do only one feed for a test
+                                    if (type(feedInfo) == dict):
 
-                                        feed = {}
+                                        datasetFeed = {}
 
-                                        feed['feedUrl'] = jsonldDistribution['contentUrl'] if ('contentUrl' in jsonldDistribution.keys()) else ''
-                                        feed['feedName'] = jsonldDistribution['name'] if ('name' in jsonldDistribution.keys()) else ''
-                                        # Should match datasetUrl from r2.json()['dataset']:
-                                        feed['datasetUrl'] = jsonld['url'] if ('url' in jsonld.keys()) else ''
-                                        feed['datasetName'] = jsonld['name'] if ('name' in jsonld.keys()) else ''
-                                        feed['datasetPublisherName'] = jsonld['publisher']['name'] if ('publisher' in jsonld.keys()) and (type(jsonld['publisher']) == dict) and ('name' in jsonld['publisher'].keys()) else ''
-                                        # # Should match catalogueUrl from r1.json()['hasPart']:
-                                        # feed['catalogueUrl'] = r2.json()['id'] if ('id' in r2.json().keys()) else r2.json()['@id'] if ('@id' in r2.json().keys()) else ''
-                                        # # The catalogue publisher name is the closest we have to a catalogue name proper:
-                                        # feed['cataloguePublisherName'] = r2.json()['publisher']['name'] if ('publisher' in r2.json().keys()) and (type(r2.json()['publisher']) == dict) and ('name' in r2.json()['publisher'].keys()) else ''
-                                        feed['discussionUrl'] = jsonld['discussionUrl'] if ('discussionUrl' in jsonld.keys()) else ''
-                                        feed['licenseUrl'] = jsonld['license'] if ('license' in jsonld.keys()) else ''
+                                        try: datasetFeed['url'] = feedInfo['contentUrl']
+                                        except: pass
+                                        # This is intentionally labelled as 'kind' to match opportunity info, and to avoid 'type' which is
+                                        # preferable but used in other contexts:
+                                        try: datasetFeed['kind'] = feedInfo['name']
+                                        except: pass
+                                        try: datasetFeed['datasetName'] = jsonld['name']
+                                        except: pass
+                                        try: datasetFeed['datasetPublisherName'] = jsonld['publisher']['name']
+                                        except: pass
+                                        try: datasetFeed['discussionUrl'] = jsonld['discussionUrl']
+                                        except: pass
+                                        try: datasetFeed['licenseUrl'] = jsonld['license']
+                                        except: pass
 
-                                        datasetFeedUrls['data'].append(feed)
+                                        if (len(datasetFeed.keys()) > 0):
+                                            datasetFeeds['data'].append(datasetFeed)
 
                 # ----------------------------------------------------------------------------------------------------
 
-                datasetFeedUrls['metadata']['counts'] = len(datasetFeedUrls['data'])
-                datasetFeedUrls['metadata']['timeLastUpdated'] = str(datetime.datetime.now())
+                datasetFeeds['metadata']['counts'] = len(datasetFeeds['data'])
+                datasetFeeds['metadata']['timeLastUpdated'] = str(datetime.datetime.now())
 
-                feeds['data'][catalogueUrl]['data'][datasetUrl] = datasetFeedUrls
+                feeds['data'][catalogueUrl]['data'][datasetUrl] = datasetFeeds
 
             # ----------------------------------------------------------------------------------------------------
 
@@ -390,7 +394,7 @@ def get_feedUrls(
         for catalogueUrl in feedUrls['data'].keys():
             for datasetUrl in feedUrls['data'][catalogueUrl]['data'].keys():
                 feedUrls['data'][catalogueUrl]['data'][datasetUrl]['data'] = [
-                    feed['feedUrl']
+                    feed['url']
                     for feed in feedUrls['data'][catalogueUrl]['data'][datasetUrl]['data']
                 ]
 
@@ -413,6 +417,184 @@ def get_feedUrls(
         })
     else:
         return json.dumps(feedUrls)
+
+# ----------------------------------------------------------------------------------------------------
+
+if (exists(dirNameCache + fileNameOpportunities)):
+    opportunities = json.load(open(dirNameCache + fileNameOpportunities, 'r'))
+else:
+    opportunities = {
+        'metadata': {
+            'counts': 0,
+            'timeLastUpdated': None,
+        },
+        'data': {},
+    }
+
+@application.route('/opportunities')
+def get_opportunities(
+    doRefresh = None
+):
+
+    doRefresh = request.args.get('refresh', default=False, type=lambda arg: arg.lower()=='true')
+    doFlatten = request.args.get('flatten', default=False, type=lambda arg: arg.lower()=='true')
+    doMetadata = request.args.get('metadata', default=False, type=lambda arg: arg.lower()=='true')
+
+    # ----------------------------------------------------------------------------------------------------
+
+    if (    not opportunities['metadata']['timeLastUpdated']
+        or  doRefresh
+    ):
+
+        get_feedUrls(doRefresh)
+
+        # ----------------------------------------------------------------------------------------------------
+
+        for catalogueUrl in feedUrls['data'].keys():
+
+            opportunities['data'][catalogueUrl] = {
+                'metadata': {
+                    'counts': 0,
+                    'timeLastUpdated': None,
+                },
+                'data': {},
+            }
+
+            # ----------------------------------------------------------------------------------------------------
+
+            for datasetUrl in feedUrls['data'][catalogueUrl]['data'].keys():
+
+                opportunities['data'][catalogueUrl]['data'][datasetUrl] = {
+                    'metadata': {
+                        'counts': 0,
+                        'timeLastUpdated': None,
+                    },
+                    'data': {},
+                }
+
+                # ----------------------------------------------------------------------------------------------------
+
+                for feedUrl in feedUrls['data'][catalogueUrl]['data'][datasetUrl]['data']:
+
+                    feedOpportunities = {
+                        'metadata': {
+                            'counts': 0,
+                            'timeLastUpdated': None,
+                        },
+                        'data': [],
+                    }
+
+                    # ----------------------------------------------------------------------------------------------------
+
+                    try:
+                        r4 = try_requests(feedUrl)
+                    except:
+                        print('ERROR: Can\'t get feed', catalogueUrl, '->', datasetUrl, '->', feedUrl)
+                        continue
+
+                    # ----------------------------------------------------------------------------------------------------
+
+                    if (    r4.status_code == 200
+                        and r4.json()
+                        and type(r4.json()) == dict
+                        and 'items' in r4.json().keys()
+                        and type(r4.json()['items']) == list
+                    ):
+                        for opportunityInfo in r4.json()['items']:
+                            if (    type(opportunityInfo) == dict
+                                and 'state' in opportunityInfo.keys()
+                                and opportunityInfo['state'] != 'deleted'
+                            ):
+
+                                feedOpportunity = {}
+
+                                # Most states should be 'updated', so only output the outliers to check what they are:
+                                if (opportunityInfo['state'] != 'updated'):
+                                    try: feedOpportunity['state'] = opportunityInfo['state']
+                                    except: pass
+                                try: feedOpportunity['id'] = opportunityInfo['id']
+                                except: pass
+                                try: feedOpportunity['kind'] = opportunityInfo['kind']
+                                except: pass
+                                try: feedOpportunity['name'] = opportunityInfo['data']['name']
+                                except: pass
+                                try: feedOpportunity['activityPrefLabel'] = opportunityInfo['data']['activity'][0]['prefLabel']
+                                except: pass
+                                try: feedOpportunity['activityId'] = opportunityInfo['data']['activity'][0]['id']
+                                except: pass
+                                try: feedOpportunity['latitude'] = opportunityInfo['data']['location']['geo']['latitude']
+                                except: pass
+                                try: feedOpportunity['longitude'] = opportunityInfo['data']['location']['geo']['longitude']
+                                except: pass
+                                # These were just to check the available keys, but take up a lot of cache file space:
+                                # feedOpportunity['keys'] = list(opportunityInfo.keys())
+                                # try: feedOpportunity['keysData'] = list(opportunityInfo['data'].keys())
+                                # except: pass
+
+                                if (len(feedOpportunity.keys()) > 0):
+                                    feedOpportunities['data'].append(feedOpportunity)
+
+                    # ----------------------------------------------------------------------------------------------------
+
+                    feedOpportunities['metadata']['counts'] = len(feedOpportunities['data'])
+                    feedOpportunities['metadata']['timeLastUpdated'] = str(datetime.datetime.now())
+
+                    opportunities['data'][catalogueUrl]['data'][datasetUrl]['data'][feedUrl] = feedOpportunities
+
+                # ----------------------------------------------------------------------------------------------------
+
+                opportunities['data'][catalogueUrl]['data'][datasetUrl]['metadata']['counts'] = sum([
+                    val['metadata']['counts']
+                    for val in opportunities['data'][catalogueUrl]['data'][datasetUrl]['data'].values()
+                ])
+                opportunities['data'][catalogueUrl]['data'][datasetUrl]['metadata']['timeLastUpdated'] = str(datetime.datetime.now())
+
+            # ----------------------------------------------------------------------------------------------------
+
+            opportunities['data'][catalogueUrl]['metadata']['counts'] = sum([
+                val['metadata']['counts']
+                for val in opportunities['data'][catalogueUrl]['data'].values()
+            ])
+            opportunities['data'][catalogueUrl]['metadata']['timeLastUpdated'] = str(datetime.datetime.now())
+
+        # ----------------------------------------------------------------------------------------------------
+
+        opportunities['metadata']['counts'] = sum([
+            val['metadata']['counts']
+            for val in opportunities['data'].values()
+        ])
+        opportunities['metadata']['timeLastUpdated'] = str(datetime.datetime.now())
+
+    # ----------------------------------------------------------------------------------------------------
+
+    if (    not exists(dirNameCache + fileNameOpportunities)
+        or  doRefresh
+    ):
+        json.dump(opportunities, open(dirNameCache + fileNameOpportunities, 'w'))
+
+    # ----------------------------------------------------------------------------------------------------
+
+    if (doFlatten):
+        return json.dumps([
+            val4
+            for val1 in opportunities['data'].values()
+            for val2 in val1['data'].values()
+            for val3 in val2['data'].values()
+            for val4 in val3['data']
+        ])
+    elif (not doMetadata):
+        return json.dumps({
+            key1: {
+                key2: {
+                    key3: val3['data']
+                    for key3,val3 in val2['data'].items()
+                }
+                for key2,val2 in val1['data'].items()
+            }
+            for key1,val1 in opportunities['data'].items()
+        })
+    else:
+        return json.dumps(opportunities)
 
 # ----------------------------------------------------------------------------------------------------
 
