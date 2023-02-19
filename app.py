@@ -4,6 +4,7 @@ import json
 import requests
 from bs4 import BeautifulSoup
 from flask import Flask, jsonify, request
+from inspect import stack
 from os.path import exists
 
 # ----------------------------------------------------------------------------------------------------
@@ -49,13 +50,16 @@ else:
     }
 
 @application.route('/catalogueurls')
-def get_catalogueUrls(
-    doRefresh = False
+def get_catalogue_urls(
+    doRefresh = False,
+    doFlatten = False,
+    doMetadata = False,
 ):
 
-    doRefresh = request.args.get('refresh', default=False, type=lambda arg: arg.lower()=='true')
-    doFlatten = request.args.get('flatten', default=False, type=lambda arg: arg.lower()=='true')
-    doMetadata = request.args.get('metadata', default=False, type=lambda arg: arg.lower()=='true')
+    if (stack()[1].function == 'dispatch_request'):
+        doRefresh = request.args.get('refresh', default=False, type=lambda arg: arg.lower()=='true')
+        doFlatten = request.args.get('flatten', default=False, type=lambda arg: arg.lower()=='true')
+        doMetadata = request.args.get('metadata', default=False, type=lambda arg: arg.lower()=='true')
 
     # ----------------------------------------------------------------------------------------------------
 
@@ -100,9 +104,9 @@ def get_catalogueUrls(
     if (    doFlatten
         or  not doMetadata
     ):
-        return json.dumps(catalogueUrls['data'])
+        return catalogueUrls['data']
     else:
-        return json.dumps(catalogueUrls)
+        return catalogueUrls
 
 # ----------------------------------------------------------------------------------------------------
 
@@ -118,13 +122,16 @@ else:
     }
 
 @application.route('/dataseturls')
-def get_datasetUrls(
-    doRefresh = False
+def get_dataset_urls(
+    doRefresh = False,
+    doFlatten = False,
+    doMetadata = False,
 ):
 
-    doRefresh = request.args.get('refresh', default=False, type=lambda arg: arg.lower()=='true')
-    doFlatten = request.args.get('flatten', default=False, type=lambda arg: arg.lower()=='true')
-    doMetadata = request.args.get('metadata', default=False, type=lambda arg: arg.lower()=='true')
+    if (stack()[1].function == 'dispatch_request'):
+        doRefresh = request.args.get('refresh', default=False, type=lambda arg: arg.lower()=='true')
+        doFlatten = request.args.get('flatten', default=False, type=lambda arg: arg.lower()=='true')
+        doMetadata = request.args.get('metadata', default=False, type=lambda arg: arg.lower()=='true')
 
     # ----------------------------------------------------------------------------------------------------
 
@@ -132,7 +139,7 @@ def get_datasetUrls(
         or  doRefresh
     ):
 
-        get_catalogueUrls(doRefresh)
+        get_catalogue_urls(doRefresh)
 
         # ----------------------------------------------------------------------------------------------------
 
@@ -194,18 +201,18 @@ def get_datasetUrls(
     # ----------------------------------------------------------------------------------------------------
 
     if (doFlatten):
-        return json.dumps([
+        return [
             val2
             for val1 in datasetUrls['data'].values()
             for val2 in val1['data']
-        ])
+        ]
     elif (not doMetadata):
-        return json.dumps({
+        return {
             key: val['data']
             for key,val in datasetUrls['data'].items()
-        })
+        }
     else:
-        return json.dumps(datasetUrls)
+        return datasetUrls
 
 # ----------------------------------------------------------------------------------------------------
 
@@ -222,12 +229,15 @@ else:
 
 @application.route('/feeds')
 def get_feeds(
-    doRefresh = False
+    doRefresh = False,
+    doFlatten = False,
+    doMetadata = False,
 ):
 
-    doRefresh = request.args.get('refresh', default=False, type=lambda arg: arg.lower()=='true')
-    doFlatten = request.args.get('flatten', default=False, type=lambda arg: arg.lower()=='true')
-    doMetadata = request.args.get('metadata', default=False, type=lambda arg: arg.lower()=='true')
+    if (stack()[1].function == 'dispatch_request'):
+        doRefresh = request.args.get('refresh', default=False, type=lambda arg: arg.lower()=='true')
+        doFlatten = request.args.get('flatten', default=False, type=lambda arg: arg.lower()=='true')
+        doMetadata = request.args.get('metadata', default=False, type=lambda arg: arg.lower()=='true')
 
     # ----------------------------------------------------------------------------------------------------
 
@@ -235,7 +245,7 @@ def get_feeds(
         or  doRefresh
     ):
 
-        get_datasetUrls(doRefresh)
+        get_dataset_urls(doRefresh)
 
         # ----------------------------------------------------------------------------------------------------
 
@@ -349,35 +359,38 @@ def get_feeds(
     # ----------------------------------------------------------------------------------------------------
 
     if (doFlatten):
-        return json.dumps([
+        return [
             val3
             for val1 in feeds['data'].values()
             for val2 in val1['data'].values()
             for val3 in val2['data']
-        ])
+        ]
     elif (not doMetadata):
-        return json.dumps({
+        return {
             key1: {
                 key2: val2['data']
                 for key2,val2 in val1['data'].items()
             }
             for key1,val1 in feeds['data'].items()
-        })
+        }
     else:
-        return json.dumps(feeds)
+        return feeds
 
 # ----------------------------------------------------------------------------------------------------
 
 feedUrls = None
 
 @application.route('/feedurls')
-def get_feedUrls(
-    doRefresh = False
+def get_feed_urls(
+    doRefresh = False,
+    doFlatten = False,
+    doMetadata = False,
 ):
 
-    doRefresh = request.args.get('refresh', default=False, type=lambda arg: arg.lower()=='true')
-    doFlatten = request.args.get('flatten', default=False, type=lambda arg: arg.lower()=='true')
-    doMetadata = request.args.get('metadata', default=False, type=lambda arg: arg.lower()=='true')
+    if (stack()[1].function == 'dispatch_request'):
+        doRefresh = request.args.get('refresh', default=False, type=lambda arg: arg.lower()=='true')
+        doFlatten = request.args.get('flatten', default=False, type=lambda arg: arg.lower()=='true')
+        doMetadata = request.args.get('metadata', default=False, type=lambda arg: arg.lower()=='true')
 
     # ----------------------------------------------------------------------------------------------------
 
@@ -401,22 +414,22 @@ def get_feedUrls(
     # ----------------------------------------------------------------------------------------------------
 
     if (doFlatten):
-        return json.dumps([
+        return [
             val3
             for val1 in feedUrls['data'].values()
             for val2 in val1['data'].values()
             for val3 in val2['data']
-        ])
+        ]
     elif (not doMetadata):
-        return json.dumps({
+        return {
             key1: {
                 key2: val2['data']
                 for key2,val2 in val1['data'].items()
             }
             for key1,val1 in feedUrls['data'].items()
-        })
+        }
     else:
-        return json.dumps(feedUrls)
+        return feedUrls
 
 # ----------------------------------------------------------------------------------------------------
 
@@ -433,12 +446,15 @@ else:
 
 @application.route('/opportunities')
 def get_opportunities(
-    doRefresh = None
+    doRefresh = False,
+    doFlatten = False,
+    doMetadata = False,
 ):
 
-    doRefresh = request.args.get('refresh', default=False, type=lambda arg: arg.lower()=='true')
-    doFlatten = request.args.get('flatten', default=False, type=lambda arg: arg.lower()=='true')
-    doMetadata = request.args.get('metadata', default=False, type=lambda arg: arg.lower()=='true')
+    if (stack()[1].function == 'dispatch_request'):
+        doRefresh = request.args.get('refresh', default=False, type=lambda arg: arg.lower()=='true')
+        doFlatten = request.args.get('flatten', default=False, type=lambda arg: arg.lower()=='true')
+        doMetadata = request.args.get('metadata', default=False, type=lambda arg: arg.lower()=='true')
 
     # ----------------------------------------------------------------------------------------------------
 
@@ -446,7 +462,7 @@ def get_opportunities(
         or  doRefresh
     ):
 
-        get_feedUrls(doRefresh)
+        get_feed_urls(doRefresh)
 
         # ----------------------------------------------------------------------------------------------------
 
@@ -575,15 +591,15 @@ def get_opportunities(
     # ----------------------------------------------------------------------------------------------------
 
     if (doFlatten):
-        return json.dumps([
+        return [
             val4
             for val1 in opportunities['data'].values()
             for val2 in val1['data'].values()
             for val3 in val2['data'].values()
             for val4 in val3['data']
-        ])
+        ]
     elif (not doMetadata):
-        return json.dumps({
+        return {
             key1: {
                 key2: {
                     key3: val3['data']
@@ -592,9 +608,9 @@ def get_opportunities(
                 for key2,val2 in val1['data'].items()
             }
             for key1,val1 in opportunities['data'].items()
-        })
+        }
     else:
-        return json.dumps(opportunities)
+        return opportunities
 
 # ----------------------------------------------------------------------------------------------------
 
@@ -762,7 +778,7 @@ def get_feeds_v1():
 
     # ----------------------------------------------------------------------------------------------------
 
-    return json.dumps(feeds_v1)
+    return feeds_v1
 
 # ----------------------------------------------------------------------------------------------------
 
@@ -999,7 +1015,7 @@ def get_keycounts():
 
     # ----------------------------------------------------------------------------------------------------
 
-    return json.dumps(keycounts)
+    return keycounts
 
 # ----------------------------------------------------------------------------------------------------
 
