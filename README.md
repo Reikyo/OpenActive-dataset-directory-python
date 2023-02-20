@@ -15,7 +15,6 @@ For running locally:
 For running on Binder:
 - environment.yml
 - index.ipynb
-- postBuild
 
 For running on Heroku:
 - Procfile
