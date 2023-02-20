@@ -57,9 +57,9 @@ def get_catalogue_urls(
 ):
 
     if (stack()[1].function == 'dispatch_request'):
-        doRefresh = request.args.get('refresh', default=False, type=lambda arg: arg.lower()=='true')
-        doFlatten = request.args.get('flatten', default=False, type=lambda arg: arg.lower()=='true')
-        doMetadata = request.args.get('metadata', default=False, type=lambda arg: arg.lower()=='true')
+        doRefresh = request.args.get('doRefresh', default=False, type=lambda arg: arg.lower()=='true')
+        doFlatten = request.args.get('doFlatten', default=False, type=lambda arg: arg.lower()=='true')
+        doMetadata = request.args.get('doMetadata', default=False, type=lambda arg: arg.lower()=='true')
 
     # ----------------------------------------------------------------------------------------------------
 
@@ -129,9 +129,9 @@ def get_dataset_urls(
 ):
 
     if (stack()[1].function == 'dispatch_request'):
-        doRefresh = request.args.get('refresh', default=False, type=lambda arg: arg.lower()=='true')
-        doFlatten = request.args.get('flatten', default=False, type=lambda arg: arg.lower()=='true')
-        doMetadata = request.args.get('metadata', default=False, type=lambda arg: arg.lower()=='true')
+        doRefresh = request.args.get('doRefresh', default=False, type=lambda arg: arg.lower()=='true')
+        doFlatten = request.args.get('doFlatten', default=False, type=lambda arg: arg.lower()=='true')
+        doMetadata = request.args.get('doMetadata', default=False, type=lambda arg: arg.lower()=='true')
 
     # ----------------------------------------------------------------------------------------------------
 
@@ -235,9 +235,9 @@ def get_feeds(
 ):
 
     if (stack()[1].function == 'dispatch_request'):
-        doRefresh = request.args.get('refresh', default=False, type=lambda arg: arg.lower()=='true')
-        doFlatten = request.args.get('flatten', default=False, type=lambda arg: arg.lower()=='true')
-        doMetadata = request.args.get('metadata', default=False, type=lambda arg: arg.lower()=='true')
+        doRefresh = request.args.get('doRefresh', default=False, type=lambda arg: arg.lower()=='true')
+        doFlatten = request.args.get('doFlatten', default=False, type=lambda arg: arg.lower()=='true')
+        doMetadata = request.args.get('doMetadata', default=False, type=lambda arg: arg.lower()=='true')
 
     # ----------------------------------------------------------------------------------------------------
 
@@ -388,9 +388,9 @@ def get_feed_urls(
 ):
 
     if (stack()[1].function == 'dispatch_request'):
-        doRefresh = request.args.get('refresh', default=False, type=lambda arg: arg.lower()=='true')
-        doFlatten = request.args.get('flatten', default=False, type=lambda arg: arg.lower()=='true')
-        doMetadata = request.args.get('metadata', default=False, type=lambda arg: arg.lower()=='true')
+        doRefresh = request.args.get('doRefresh', default=False, type=lambda arg: arg.lower()=='true')
+        doFlatten = request.args.get('doFlatten', default=False, type=lambda arg: arg.lower()=='true')
+        doMetadata = request.args.get('doMetadata', default=False, type=lambda arg: arg.lower()=='true')
 
     # ----------------------------------------------------------------------------------------------------
 
@@ -452,9 +452,9 @@ def get_opportunities(
 ):
 
     if (stack()[1].function == 'dispatch_request'):
-        doRefresh = request.args.get('refresh', default=False, type=lambda arg: arg.lower()=='true')
-        doFlatten = request.args.get('flatten', default=False, type=lambda arg: arg.lower()=='true')
-        doMetadata = request.args.get('metadata', default=False, type=lambda arg: arg.lower()=='true')
+        doRefresh = request.args.get('doRefresh', default=False, type=lambda arg: arg.lower()=='true')
+        doFlatten = request.args.get('doFlatten', default=False, type=lambda arg: arg.lower()=='true')
+        doMetadata = request.args.get('doMetadata', default=False, type=lambda arg: arg.lower()=='true')
 
     # ----------------------------------------------------------------------------------------------------
 
