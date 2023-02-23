@@ -87,4 +87,6 @@ http://127.0.0.1:5000/get_opportunities?doFlatten=True
 
 To get the metadata form, use the `doMetadata` keyword argument and set to `True`, just like the above. Note that if both `doFlatten` and `doMetadata` are set to `True`, then the former takes precedence.
 
+To insert the path URLs that form the outer dictionary keys into the terminal dictionaries along each branch of the outputs from `get_feeds` and `get_opportunities`, use the `doPath` keyword argument and set to `True`. This is particularly useful when `doFlatten` is also applied, as the path information is then obscured.
+
 Finally, use the `doRefresh` keyword argument and set to `True` in order to refresh the cached files for the function in question and all those before it in the data gathering chain. For example, if we refresh the `get_dataset_urls` function, then both the catalogue URLs and the dataset URLs will be refreshed, but not the feed data or the opportunity data. But if we refresh the `get_opportunities` function, then all cached data will be refreshed, as this sits at the very end of the chain. The more of the data chain that is refreshed, then the longer it will take, up to a few minutes in the case of `get_opportunities` seeing as it requires the most work.

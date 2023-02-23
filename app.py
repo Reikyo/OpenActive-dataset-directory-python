@@ -52,13 +52,11 @@ else:
 @application.route('/catalogueurls')
 def get_catalogue_urls(
     doRefresh = False,
-    doFlatten = False,
     doMetadata = False,
 ):
 
     if (stack()[1].function == 'dispatch_request'):
         doRefresh = request.args.get('doRefresh', default=False, type=lambda arg: arg.lower()=='true')
-        doFlatten = request.args.get('doFlatten', default=False, type=lambda arg: arg.lower()=='true')
         doMetadata = request.args.get('doMetadata', default=False, type=lambda arg: arg.lower()=='true')
 
     # ----------------------------------------------------------------------------------------------------
@@ -101,12 +99,10 @@ def get_catalogue_urls(
 
     # ----------------------------------------------------------------------------------------------------
 
-    if (    doFlatten
-        or  not doMetadata
-    ):
-        return catalogueUrls['data']
-    else:
+    if (doMetadata):
         return catalogueUrls
+    else:
+        return catalogueUrls['data']
 
 # ----------------------------------------------------------------------------------------------------
 
@@ -206,13 +202,13 @@ def get_dataset_urls(
             for val1 in datasetUrls['data'].values()
             for val2 in val1['data']
         ]
-    elif (not doMetadata):
+    elif (doMetadata):
+        return datasetUrls
+    else:
         return {
             key: val['data']
             for key,val in datasetUrls['data'].items()
         }
-    else:
-        return datasetUrls
 
 # ----------------------------------------------------------------------------------------------------
 
@@ -232,12 +228,14 @@ def get_feeds(
     doRefresh = False,
     doFlatten = False,
     doMetadata = False,
+    doPath = False,
 ):
 
     if (stack()[1].function == 'dispatch_request'):
         doRefresh = request.args.get('doRefresh', default=False, type=lambda arg: arg.lower()=='true')
         doFlatten = request.args.get('doFlatten', default=False, type=lambda arg: arg.lower()=='true')
         doMetadata = request.args.get('doMetadata', default=False, type=lambda arg: arg.lower()=='true')
+        doPath = request.args.get('doPath', default=False, type=lambda arg: arg.lower()=='true')
 
     # ----------------------------------------------------------------------------------------------------
 
@@ -358,23 +356,35 @@ def get_feeds(
 
     # ----------------------------------------------------------------------------------------------------
 
+    if (not doPath):
+        output = feeds
+    else:
+        output = copy.deepcopy(feeds)
+        for catalogueUrl in output['data'].keys():
+            for datasetUrl in output['data'][catalogueUrl]['data'].keys():
+                for feed in output['data'][catalogueUrl]['data'][datasetUrl]['data']:
+                    feed.update({
+                        'catalogueUrl': catalogueUrl,
+                        'datasetUrl': datasetUrl,
+                    })
+
     if (doFlatten):
         return [
             val3
-            for val1 in feeds['data'].values()
+            for val1 in output['data'].values()
             for val2 in val1['data'].values()
             for val3 in val2['data']
         ]
-    elif (not doMetadata):
+    elif (doMetadata):
+        return output
+    else:
         return {
             key1: {
                 key2: val2['data']
                 for key2,val2 in val1['data'].items()
             }
-            for key1,val1 in feeds['data'].items()
+            for key1,val1 in output['data'].items()
         }
-    else:
-        return feeds
 
 # ----------------------------------------------------------------------------------------------------
 
@@ -420,7 +430,9 @@ def get_feed_urls(
             for val2 in val1['data'].values()
             for val3 in val2['data']
         ]
-    elif (not doMetadata):
+    elif (doMetadata):
+        return feedUrls
+    else:
         return {
             key1: {
                 key2: val2['data']
@@ -428,8 +440,6 @@ def get_feed_urls(
             }
             for key1,val1 in feedUrls['data'].items()
         }
-    else:
-        return feedUrls
 
 # ----------------------------------------------------------------------------------------------------
 
@@ -449,12 +459,14 @@ def get_opportunities(
     doRefresh = False,
     doFlatten = False,
     doMetadata = False,
+    doPath = False,
 ):
 
     if (stack()[1].function == 'dispatch_request'):
         doRefresh = request.args.get('doRefresh', default=False, type=lambda arg: arg.lower()=='true')
         doFlatten = request.args.get('doFlatten', default=False, type=lambda arg: arg.lower()=='true')
         doMetadata = request.args.get('doMetadata', default=False, type=lambda arg: arg.lower()=='true')
+        doPath = request.args.get('doPath', default=False, type=lambda arg: arg.lower()=='true')
 
     # ----------------------------------------------------------------------------------------------------
 
@@ -590,15 +602,31 @@ def get_opportunities(
 
     # ----------------------------------------------------------------------------------------------------
 
+    if (not doPath):
+        output = opportunities
+    else:
+        output = copy.deepcopy(opportunities)
+        for catalogueUrl in output['data'].keys():
+            for datasetUrl in output['data'][catalogueUrl]['data'].keys():
+                for feedUrl in output['data'][catalogueUrl]['data'][datasetUrl]['data'].keys():
+                    for opportunity in output['data'][catalogueUrl]['data'][datasetUrl]['data'][feedUrl]['data']:
+                        opportunity.update({
+                            'catalogueUrl': catalogueUrl,
+                            'datasetUrl': datasetUrl,
+                            'feedUrl': feedUrl,
+                        })
+
     if (doFlatten):
         return [
             val4
-            for val1 in opportunities['data'].values()
+            for val1 in output['data'].values()
             for val2 in val1['data'].values()
             for val3 in val2['data'].values()
             for val4 in val3['data']
         ]
-    elif (not doMetadata):
+    elif (doMetadata):
+        return output
+    else:
         return {
             key1: {
                 key2: {
@@ -607,10 +635,8 @@ def get_opportunities(
                 }
                 for key2,val2 in val1['data'].items()
             }
-            for key1,val1 in opportunities['data'].items()
+            for key1,val1 in output['data'].items()
         }
-    else:
-        return opportunities
 
 # ----------------------------------------------------------------------------------------------------
 
