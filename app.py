@@ -41,29 +41,37 @@ def try_requests(url):
 if (exists(dirNameCache + fileNameCatalogueUrls)):
     catalogueUrls = json.load(open(dirNameCache + fileNameCatalogueUrls, 'r'))
 else:
-    catalogueUrls = {
-        'metadata': {
-            'counts': 0,
-            'timeLastUpdated': None,
-        },
-        'data': [],
-    }
+    catalogueUrls = None
 
 @application.route('/catalogueurls')
 def get_catalogue_urls(
     doRefresh = False,
     doMetadata = False,
+    doLimitCatalogues = None,
 ):
 
     if (stack()[1].function == 'dispatch_request'):
         doRefresh = request.args.get('doRefresh', default=False, type=lambda arg: arg.lower()=='true')
         doMetadata = request.args.get('doMetadata', default=False, type=lambda arg: arg.lower()=='true')
+        doLimitCatalogues = request.args.get('doLimitCatalogues', default=None, type=int)
 
     # ----------------------------------------------------------------------------------------------------
 
-    if (    not catalogueUrls['metadata']['timeLastUpdated']
+    global catalogueUrls
+
+    if (    not catalogueUrls
         or  doRefresh
     ):
+
+        catalogueUrls = {
+            'metadata': {
+                'counts': 0,
+                'timeLastUpdated': None,
+            },
+            'data': [],
+        }
+
+        # ----------------------------------------------------------------------------------------------------
 
         try:
             r1 = try_requests(catalogueCollectionUrl)
@@ -78,8 +86,7 @@ def get_catalogue_urls(
             and 'hasPart' in r1.json().keys()
             and type(r1.json()['hasPart']) == list
         ):
-            for catalogueUrl in r1.json()['hasPart']: # Enable to do all catalogues
-            # for catalogueUrl in [r1.json()['hasPart'][0]]: # Enable to do only one catalogue for a test
+            for catalogueUrl in r1.json()['hasPart'][0:doLimitCatalogues]:
                 if (    type(catalogueUrl) == str
                     and catalogueUrl not in catalogueUrls['data']
                 ):
@@ -109,33 +116,46 @@ def get_catalogue_urls(
 if (exists(dirNameCache + fileNameDatasetUrls)):
     datasetUrls = json.load(open(dirNameCache + fileNameDatasetUrls, 'r'))
 else:
-    datasetUrls = {
-        'metadata': {
-            'counts': 0,
-            'timeLastUpdated': None,
-        },
-        'data': {},
-    }
+    datasetUrls = None
 
 @application.route('/dataseturls')
 def get_dataset_urls(
     doRefresh = False,
     doFlatten = False,
     doMetadata = False,
+    doLimitCatalogues = None,
+    doLimitDatasets = None,
 ):
 
     if (stack()[1].function == 'dispatch_request'):
         doRefresh = request.args.get('doRefresh', default=False, type=lambda arg: arg.lower()=='true')
         doFlatten = request.args.get('doFlatten', default=False, type=lambda arg: arg.lower()=='true')
         doMetadata = request.args.get('doMetadata', default=False, type=lambda arg: arg.lower()=='true')
+        doLimitCatalogues = request.args.get('doLimitCatalogues', default=None, type=int)
+        doLimitDatasets = request.args.get('doLimitDatasets', default=None, type=int)
 
     # ----------------------------------------------------------------------------------------------------
 
-    if (    not datasetUrls['metadata']['timeLastUpdated']
+    global datasetUrls
+
+    if (    not datasetUrls
         or  doRefresh
     ):
 
-        get_catalogue_urls(doRefresh)
+        get_catalogue_urls(
+            doRefresh = doRefresh,
+            doLimitCatalogues = doLimitCatalogues,
+        )
+
+        # ----------------------------------------------------------------------------------------------------
+
+        datasetUrls = {
+            'metadata': {
+                'counts': 0,
+                'timeLastUpdated': None,
+            },
+            'data': {},
+        }
 
         # ----------------------------------------------------------------------------------------------------
 
@@ -165,8 +185,7 @@ def get_dataset_urls(
                 and 'dataset' in r2.json().keys()
                 and type(r2.json()['dataset']) == list
             ):
-                for datasetUrl in r2.json()['dataset']: # Enable to do all datasets
-                # for datasetUrl in [r2.json()['dataset'][0]]: # Enable to do only one dataset for a test
+                for datasetUrl in r2.json()['dataset'][0:doLimitDatasets]:
                     if (    type(datasetUrl) == str
                         and datasetUrl not in catalogueDatasetUrls['data']
                     ):
@@ -215,19 +234,16 @@ def get_dataset_urls(
 if (exists(dirNameCache + fileNameFeeds)):
     feeds = json.load(open(dirNameCache + fileNameFeeds, 'r'))
 else:
-    feeds = {
-        'metadata': {
-            'counts': 0,
-            'timeLastUpdated': None,
-        },
-        'data': {},
-    }
+    feeds = None
 
 @application.route('/feeds')
 def get_feeds(
     doRefresh = False,
     doFlatten = False,
     doMetadata = False,
+    doLimitCatalogues = None,
+    doLimitDatasets = None,
+    doLimitFeeds = None,
     doPath = False,
 ):
 
@@ -235,15 +251,34 @@ def get_feeds(
         doRefresh = request.args.get('doRefresh', default=False, type=lambda arg: arg.lower()=='true')
         doFlatten = request.args.get('doFlatten', default=False, type=lambda arg: arg.lower()=='true')
         doMetadata = request.args.get('doMetadata', default=False, type=lambda arg: arg.lower()=='true')
+        doLimitCatalogues = request.args.get('doLimitCatalogues', default=None, type=int)
+        doLimitDatasets = request.args.get('doLimitDatasets', default=None, type=int)
+        doLimitFeeds = request.args.get('doLimitFeeds', default=None, type=int)
         doPath = request.args.get('doPath', default=False, type=lambda arg: arg.lower()=='true')
 
     # ----------------------------------------------------------------------------------------------------
 
-    if (    not feeds['metadata']['timeLastUpdated']
+    global feeds
+
+    if (    not feeds
         or  doRefresh
     ):
 
-        get_dataset_urls(doRefresh)
+        get_dataset_urls(
+            doRefresh = doRefresh,
+            doLimitCatalogues = doLimitCatalogues,
+            doLimitDatasets = doLimitDatasets,
+        )
+
+        # ----------------------------------------------------------------------------------------------------
+
+        feeds = {
+            'metadata': {
+                'counts': 0,
+                'timeLastUpdated': None,
+            },
+            'data': {},
+        }
 
         # ----------------------------------------------------------------------------------------------------
 
@@ -300,8 +335,7 @@ def get_feeds(
                                 and 'distribution' in jsonld.keys()
                                 and type(jsonld['distribution']) == list
                             ):
-                                for feedInfo in jsonld['distribution']: # Enable to do all feeds
-                                # for feedInfo in [jsonld['distribution'][0]]: # Enable to do only one feed for a test
+                                for feedInfo in jsonld['distribution'][0:doLimitFeeds]:
                                     if (type(feedInfo) == dict):
 
                                         datasetFeed = {}
@@ -395,12 +429,18 @@ def get_feed_urls(
     doRefresh = False,
     doFlatten = False,
     doMetadata = False,
+    doLimitCatalogues = None,
+    doLimitDatasets = None,
+    doLimitFeeds = None,
 ):
 
     if (stack()[1].function == 'dispatch_request'):
         doRefresh = request.args.get('doRefresh', default=False, type=lambda arg: arg.lower()=='true')
         doFlatten = request.args.get('doFlatten', default=False, type=lambda arg: arg.lower()=='true')
         doMetadata = request.args.get('doMetadata', default=False, type=lambda arg: arg.lower()=='true')
+        doLimitCatalogues = request.args.get('doLimitCatalogues', default=None, type=int)
+        doLimitDatasets = request.args.get('doLimitDatasets', default=None, type=int)
+        doLimitFeeds = request.args.get('doLimitFeeds', default=None, type=int)
 
     # ----------------------------------------------------------------------------------------------------
 
@@ -410,9 +450,18 @@ def get_feed_urls(
         or  doRefresh
     ):
 
-        get_feeds(doRefresh)
+        get_feeds(
+            doRefresh = doRefresh,
+            doLimitCatalogues = doLimitCatalogues,
+            doLimitDatasets = doLimitDatasets,
+            doLimitFeeds = doLimitFeeds,
+        )
+
+        # ----------------------------------------------------------------------------------------------------
 
         feedUrls = copy.deepcopy(feeds)
+
+        # ----------------------------------------------------------------------------------------------------
 
         for catalogueUrl in feedUrls['data'].keys():
             for datasetUrl in feedUrls['data'][catalogueUrl]['data'].keys():
@@ -446,19 +495,17 @@ def get_feed_urls(
 if (exists(dirNameCache + fileNameOpportunities)):
     opportunities = json.load(open(dirNameCache + fileNameOpportunities, 'r'))
 else:
-    opportunities = {
-        'metadata': {
-            'counts': 0,
-            'timeLastUpdated': None,
-        },
-        'data': {},
-    }
+    opportunities = None
 
 @application.route('/opportunities')
 def get_opportunities(
     doRefresh = False,
     doFlatten = False,
     doMetadata = False,
+    doLimitCatalogues = None,
+    doLimitDatasets = None,
+    doLimitFeeds = None,
+    doLimitOpportunities = None,
     doPath = False,
 ):
 
@@ -466,15 +513,36 @@ def get_opportunities(
         doRefresh = request.args.get('doRefresh', default=False, type=lambda arg: arg.lower()=='true')
         doFlatten = request.args.get('doFlatten', default=False, type=lambda arg: arg.lower()=='true')
         doMetadata = request.args.get('doMetadata', default=False, type=lambda arg: arg.lower()=='true')
+        doLimitCatalogues = request.args.get('doLimitCatalogues', default=None, type=int)
+        doLimitDatasets = request.args.get('doLimitDatasets', default=None, type=int)
+        doLimitFeeds = request.args.get('doLimitFeeds', default=None, type=int)
+        doLimitOpportunities = request.args.get('doLimitOpportunities', default=None, type=int)
         doPath = request.args.get('doPath', default=False, type=lambda arg: arg.lower()=='true')
 
     # ----------------------------------------------------------------------------------------------------
 
-    if (    not opportunities['metadata']['timeLastUpdated']
+    global opportunities
+
+    if (    not opportunities
         or  doRefresh
     ):
 
-        get_feed_urls(doRefresh)
+        get_feed_urls(
+            doRefresh = doRefresh,
+            doLimitCatalogues = doLimitCatalogues,
+            doLimitDatasets = doLimitDatasets,
+            doLimitFeeds = doLimitFeeds,
+        )
+
+        # ----------------------------------------------------------------------------------------------------
+
+        opportunities = {
+            'metadata': {
+                'counts': 0,
+                'timeLastUpdated': None,
+            },
+            'data': {},
+        }
 
         # ----------------------------------------------------------------------------------------------------
 
@@ -528,7 +596,7 @@ def get_opportunities(
                         and 'items' in r4.json().keys()
                         and type(r4.json()['items']) == list
                     ):
-                        for opportunityInfo in r4.json()['items']:
+                        for opportunityInfo in r4.json()['items'][0:doLimitOpportunities]:
                             if (    type(opportunityInfo) == dict
                                 and 'state' in opportunityInfo.keys()
                                 and opportunityInfo['state'] != 'deleted'
