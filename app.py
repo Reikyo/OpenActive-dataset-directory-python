@@ -577,58 +577,91 @@ def get_opportunities(
                             'counts': 0,
                             'timeLastUpdated': None,
                         },
-                        'data': [],
+                        'data': {},
                     }
 
                     # ----------------------------------------------------------------------------------------------------
 
-                    try:
-                        r4 = try_requests(feedUrl)
-                    except:
-                        print('ERROR: Can\'t get feed', catalogueUrl, '->', datasetUrl, '->', feedUrl)
-                        continue
+                    feedUrlCurrent = feedUrl
+
+                    while (feedUrlCurrent):
+
+                        try:
+                            r4 = try_requests(feedUrlCurrent)
+                        except:
+                            print('ERROR: Can\'t get feed', catalogueUrl, '->', datasetUrl, '->', feedUrlCurrent)
+                            continue
+
+                        # ----------------------------------------------------------------------------------------------------
+
+                        if (    r4.status_code == 200
+                            and r4.json()
+                            and type(r4.json()) == dict
+                        ):
+                            if (    'items' in r4.json().keys()
+                                and type(r4.json()['items']) == list
+                            ):
+                                for opportunityInfo in r4.json()['items']:
+                                    if (    type(opportunityInfo) == dict
+                                        and 'state' in opportunityInfo.keys()
+                                        and 'id' in opportunityInfo.keys()
+                                        and 'modified' in opportunityInfo.keys()
+                                        and (   opportunityInfo['id'] not in feedOpportunities['data'].keys()
+                                            or  opportunityInfo['modified'] > feedOpportunities['data'][opportunityInfo['id']]['modified'] )
+                                    ):
+
+                                        if (opportunityInfo['state'] == 'deleted'):
+                                            if (opportunityInfo['id'] in feedOpportunities['data'].keys()):
+                                                del(feedOpportunities['data'][opportunityInfo['id']])
+                                            continue
+
+                                        feedOpportunity = {}
+
+                                        # Most states should be 'updated', so only output the outliers to check what they are:
+                                        # if (opportunityInfo['state'] != 'updated'):
+                                        #     feedOpportunity['state'] = opportunityInfo['state']
+                                        feedOpportunity['id'] = opportunityInfo['id']
+                                        feedOpportunity['modified'] = opportunityInfo['modified']
+                                        try: feedOpportunity['kind'] = opportunityInfo['kind']
+                                        except: pass
+                                        try: feedOpportunity['name'] = opportunityInfo['data']['name']
+                                        except: pass
+                                        try: feedOpportunity['activityPrefLabel'] = opportunityInfo['data']['activity'][0]['prefLabel']
+                                        except: pass
+                                        try: feedOpportunity['activityId'] = opportunityInfo['data']['activity'][0]['id']
+                                        except: pass
+                                        try: feedOpportunity['latitude'] = opportunityInfo['data']['location']['geo']['latitude']
+                                        except: pass
+                                        try: feedOpportunity['longitude'] = opportunityInfo['data']['location']['geo']['longitude']
+                                        except: pass
+
+                                        # These were just to check the available keys, but take up a lot of cache file space:
+                                        # feedOpportunity['keys'] = list(opportunityInfo.keys())
+                                        # try: feedOpportunity['keysData'] = list(opportunityInfo['data'].keys())
+                                        # except: pass
+
+                                        feedOpportunities['data'][opportunityInfo['id']] = feedOpportunity
+
+                                        if (len(feedOpportunities['data']) == doLimitOpportunities):
+                                            break
+
+                            if (    'next' in r4.json().keys()
+                                and type(r4.json()['next']) == str
+                                and r4.json()['next'] != feedUrlCurrent
+                                and len(feedOpportunities['data']) != doLimitOpportunities
+                            ):
+                                feedUrlCurrent = r4.json()['next']
+                            else:
+                                feedUrlCurrent = None
+
+                        else:
+                            print('ERROR: Problem with feed', catalogueUrl, '->', datasetUrl, '->', feedUrlCurrent)
+                            feedUrlCurrent = None
 
                     # ----------------------------------------------------------------------------------------------------
 
-                    if (    r4.status_code == 200
-                        and r4.json()
-                        and type(r4.json()) == dict
-                        and 'items' in r4.json().keys()
-                        and type(r4.json()['items']) == list
-                    ):
-                        for opportunityInfo in r4.json()['items'][0:doLimitOpportunities]:
-                            if (    type(opportunityInfo) == dict
-                                and 'state' in opportunityInfo.keys()
-                                and opportunityInfo['state'] != 'deleted'
-                            ):
-
-                                feedOpportunity = {}
-
-                                # Most states should be 'updated', so only output the outliers to check what they are:
-                                if (opportunityInfo['state'] != 'updated'):
-                                    try: feedOpportunity['state'] = opportunityInfo['state']
-                                    except: pass
-                                try: feedOpportunity['id'] = opportunityInfo['id']
-                                except: pass
-                                try: feedOpportunity['kind'] = opportunityInfo['kind']
-                                except: pass
-                                try: feedOpportunity['name'] = opportunityInfo['data']['name']
-                                except: pass
-                                try: feedOpportunity['activityPrefLabel'] = opportunityInfo['data']['activity'][0]['prefLabel']
-                                except: pass
-                                try: feedOpportunity['activityId'] = opportunityInfo['data']['activity'][0]['id']
-                                except: pass
-                                try: feedOpportunity['latitude'] = opportunityInfo['data']['location']['geo']['latitude']
-                                except: pass
-                                try: feedOpportunity['longitude'] = opportunityInfo['data']['location']['geo']['longitude']
-                                except: pass
-                                # These were just to check the available keys, but take up a lot of cache file space:
-                                # feedOpportunity['keys'] = list(opportunityInfo.keys())
-                                # try: feedOpportunity['keysData'] = list(opportunityInfo['data'].keys())
-                                # except: pass
-
-                                if (len(feedOpportunity.keys()) > 0):
-                                    feedOpportunities['data'].append(feedOpportunity)
+                    feedOpportunities['data'] = list(feedOpportunities['data'].values())
+                    # feedOpportunities['data'] = list(feedOpportunities['data'].keys())
 
                     # ----------------------------------------------------------------------------------------------------
 
