@@ -618,8 +618,8 @@ def get_opportunities(
                                         feedOpportunity = {}
 
                                         # Most states should be 'updated', so only output the outliers to check what they are:
-                                        # if (opportunityInfo['state'] != 'updated'):
-                                        #     feedOpportunity['state'] = opportunityInfo['state']
+                                        if (opportunityInfo['state'] != 'updated'):
+                                            feedOpportunity['state'] = opportunityInfo['state']
                                         feedOpportunity['id'] = opportunityInfo['id']
                                         feedOpportunity['modified'] = opportunityInfo['modified']
                                         try: feedOpportunity['kind'] = opportunityInfo['kind']
