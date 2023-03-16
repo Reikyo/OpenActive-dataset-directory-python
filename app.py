@@ -1,11 +1,12 @@
 import copy
-import datetime
 import json
 import requests
 from bs4 import BeautifulSoup
+from datetime import datetime
 from flask import Flask, jsonify, request
 from inspect import stack
 from os.path import exists
+# from termcolor import colored
 
 # ----------------------------------------------------------------------------------------------------
 
@@ -21,6 +22,40 @@ fileNameOpportunities = 'opportunities.json'
 
 # ----------------------------------------------------------------------------------------------------
 
+kwargsDefault = {
+    'doRefresh': (bool, False),
+    'doFlatten': (bool, False),
+    'doMetadata': (bool, False),
+    'doPath': (bool, False),
+    'doLimitCatalogues': (int, None),
+    'doLimitDatasets': (int, None),
+    'doLimitFeeds': (int, None),
+    'doLimitOpportunities': (int, None),
+}
+
+kwargsGlobal = {}
+
+def set_kwargs_global(**kwargs):
+
+    # print(datetime.now(), colored('This is', stack()[0].function, 'called by', stack()[1].function, 'green'))
+
+    # This option is for a Flask call:
+    if (stack()[2].function == 'dispatch_request'):
+        for key,val in kwargsDefault.items():
+            if (val[0] == bool):
+                kwargsGlobal[key] = request.args.get(key, type=lambda arg: arg.lower()=='true', default=val[1])
+            elif (val[0] == int):
+                kwargsGlobal[key] = request.args.get(key, type=val[0], default=val[1])
+    # This option is for a direct call if the code has been imported:
+    elif (stack()[2].function == '<module>'):
+        for key,val in kwargsDefault.items():
+            kwargsGlobal[key] = kwargs[key] if key in kwargs.keys() else val[1]
+    # We don't need a default option, as other calls would be for functions deeper in the stack, and
+    # only the first function in the stack (either 'dispatch_request' or '<module>') dictates the
+    # setting of global kwargs
+
+# ----------------------------------------------------------------------------------------------------
+
 def try_requests(url):
 
     r = requests.get(url)
@@ -32,9 +67,10 @@ def try_requests(url):
         r = requests.get(url)
         numTries += 1
         if (numTries == numTriesMax):
+            print('Max. tries reached')
             break;
 
-    return r
+    return r, numTries
 
 # ----------------------------------------------------------------------------------------------------
 
@@ -44,23 +80,19 @@ else:
     catalogueUrls = None
 
 @application.route('/catalogueurls')
-def get_catalogue_urls(
-    doRefresh = False,
-    doMetadata = False,
-    doLimitCatalogues = None,
-):
+def get_catalogue_urls(**kwargs):
 
-    if (stack()[1].function == 'dispatch_request'):
-        doRefresh = request.args.get('doRefresh', default=False, type=lambda arg: arg.lower()=='true')
-        doMetadata = request.args.get('doMetadata', default=False, type=lambda arg: arg.lower()=='true')
-        doLimitCatalogues = request.args.get('doLimitCatalogues', default=None, type=int)
+    # print(datetime.now(), colored('This is', stack()[0].function, 'called by', stack()[1].function, 'green'))
+
+    if (stack()[1].function in ['dispatch_request', '<module>']):
+        set_kwargs_global(**kwargs)
 
     # ----------------------------------------------------------------------------------------------------
 
     global catalogueUrls
 
     if (    not catalogueUrls
-        or  doRefresh
+        or  kwargsGlobal['doRefresh']
     ):
 
         catalogueUrls = {
@@ -74,9 +106,10 @@ def get_catalogue_urls(
         # ----------------------------------------------------------------------------------------------------
 
         try:
-            r1 = try_requests(catalogueCollectionUrl)
+            r1, r1NumTries = try_requests(catalogueCollectionUrl)
+            # print(datetime.now(), 'Got response in {} {}'.format(r1NumTries, 'try' if r1NumTries == 1 else 'tries'))
         except:
-            print('ERROR: Can\'t get collection of catalogues')
+            print(datetime.now(), colored('ERROR: Can\'t get collection of catalogues', 'yellow'))
 
         # ----------------------------------------------------------------------------------------------------
 
@@ -86,7 +119,7 @@ def get_catalogue_urls(
             and 'hasPart' in r1.json().keys()
             and type(r1.json()['hasPart']) == list
         ):
-            for catalogueUrl in r1.json()['hasPart'][0:doLimitCatalogues]:
+            for catalogueUrl in r1.json()['hasPart'][0:kwargsGlobal['doLimitCatalogues']]:
                 if (    type(catalogueUrl) == str
                     and catalogueUrl not in catalogueUrls['data']
                 ):
@@ -95,18 +128,18 @@ def get_catalogue_urls(
         # ----------------------------------------------------------------------------------------------------
 
         catalogueUrls['metadata']['counts'] = len(catalogueUrls['data'])
-        catalogueUrls['metadata']['timeLastUpdated'] = str(datetime.datetime.now())
+        catalogueUrls['metadata']['timeLastUpdated'] = str(datetime.now())
 
     # ----------------------------------------------------------------------------------------------------
 
     if (    not exists(dirNameCache + fileNameCatalogueUrls)
-        or  doRefresh
+        or  kwargsGlobal['doRefresh']
     ):
         json.dump(catalogueUrls, open(dirNameCache + fileNameCatalogueUrls, 'w'))
 
     # ----------------------------------------------------------------------------------------------------
 
-    if (doMetadata):
+    if (kwargsGlobal['doMetadata']):
         return catalogueUrls
     else:
         return catalogueUrls['data']
@@ -119,33 +152,22 @@ else:
     datasetUrls = None
 
 @application.route('/dataseturls')
-def get_dataset_urls(
-    doRefresh = False,
-    doFlatten = False,
-    doMetadata = False,
-    doLimitCatalogues = None,
-    doLimitDatasets = None,
-):
+def get_dataset_urls(**kwargs):
 
-    if (stack()[1].function == 'dispatch_request'):
-        doRefresh = request.args.get('doRefresh', default=False, type=lambda arg: arg.lower()=='true')
-        doFlatten = request.args.get('doFlatten', default=False, type=lambda arg: arg.lower()=='true')
-        doMetadata = request.args.get('doMetadata', default=False, type=lambda arg: arg.lower()=='true')
-        doLimitCatalogues = request.args.get('doLimitCatalogues', default=None, type=int)
-        doLimitDatasets = request.args.get('doLimitDatasets', default=None, type=int)
+    # print(datetime.now(), colored('This is', stack()[0].function, 'called by', stack()[1].function, 'green'))
+
+    if (stack()[1].function in ['dispatch_request', '<module>']):
+        set_kwargs_global(**kwargs)
 
     # ----------------------------------------------------------------------------------------------------
 
     global datasetUrls
 
     if (    not datasetUrls
-        or  doRefresh
+        or  kwargsGlobal['doRefresh']
     ):
 
-        get_catalogue_urls(
-            doRefresh = doRefresh,
-            doLimitCatalogues = doLimitCatalogues,
-        )
+        get_catalogue_urls()
 
         # ----------------------------------------------------------------------------------------------------
 
@@ -172,9 +194,10 @@ def get_dataset_urls(
             # ----------------------------------------------------------------------------------------------------
 
             try:
-                r2 = try_requests(catalogueUrl)
+                r2, r2NumTries = try_requests(catalogueUrl)
+                # print(datetime.now(), 'Got response in {} {}'.format(r2NumTries, 'try' if r2NumTries == 1 else 'tries'))
             except:
-                print('ERROR: Can\'t get catalogue', catalogueUrl)
+                print(datetime.now(), colored('ERROR: Can\'t get catalogue {}'.format(catalogueUrl), 'yellow'))
                 continue
 
             # ----------------------------------------------------------------------------------------------------
@@ -185,7 +208,7 @@ def get_dataset_urls(
                 and 'dataset' in r2.json().keys()
                 and type(r2.json()['dataset']) == list
             ):
-                for datasetUrl in r2.json()['dataset'][0:doLimitDatasets]:
+                for datasetUrl in r2.json()['dataset'][0:kwargsGlobal['doLimitDatasets']]:
                     if (    type(datasetUrl) == str
                         and datasetUrl not in catalogueDatasetUrls['data']
                     ):
@@ -194,7 +217,7 @@ def get_dataset_urls(
             # ----------------------------------------------------------------------------------------------------
 
             catalogueDatasetUrls['metadata']['counts'] = len(catalogueDatasetUrls['data'])
-            catalogueDatasetUrls['metadata']['timeLastUpdated'] = str(datetime.datetime.now())
+            catalogueDatasetUrls['metadata']['timeLastUpdated'] = str(datetime.now())
 
             datasetUrls['data'][catalogueUrl] = catalogueDatasetUrls
 
@@ -204,24 +227,24 @@ def get_dataset_urls(
             val['metadata']['counts']
             for val in datasetUrls['data'].values()
         ])
-        datasetUrls['metadata']['timeLastUpdated'] = str(datetime.datetime.now())
+        datasetUrls['metadata']['timeLastUpdated'] = str(datetime.now())
 
     # ----------------------------------------------------------------------------------------------------
 
     if (    not exists(dirNameCache + fileNameDatasetUrls)
-        or  doRefresh
+        or  kwargsGlobal['doRefresh']
     ):
         json.dump(datasetUrls, open(dirNameCache + fileNameDatasetUrls, 'w'))
 
     # ----------------------------------------------------------------------------------------------------
 
-    if (doFlatten):
+    if (kwargsGlobal['doFlatten']):
         return [
             val2
             for val1 in datasetUrls['data'].values()
             for val2 in val1['data']
         ]
-    elif (doMetadata):
+    elif (kwargsGlobal['doMetadata']):
         return datasetUrls
     else:
         return {
@@ -237,38 +260,22 @@ else:
     feeds = None
 
 @application.route('/feeds')
-def get_feeds(
-    doRefresh = False,
-    doFlatten = False,
-    doMetadata = False,
-    doLimitCatalogues = None,
-    doLimitDatasets = None,
-    doLimitFeeds = None,
-    doPath = False,
-):
+def get_feeds(**kwargs):
 
-    if (stack()[1].function == 'dispatch_request'):
-        doRefresh = request.args.get('doRefresh', default=False, type=lambda arg: arg.lower()=='true')
-        doFlatten = request.args.get('doFlatten', default=False, type=lambda arg: arg.lower()=='true')
-        doMetadata = request.args.get('doMetadata', default=False, type=lambda arg: arg.lower()=='true')
-        doLimitCatalogues = request.args.get('doLimitCatalogues', default=None, type=int)
-        doLimitDatasets = request.args.get('doLimitDatasets', default=None, type=int)
-        doLimitFeeds = request.args.get('doLimitFeeds', default=None, type=int)
-        doPath = request.args.get('doPath', default=False, type=lambda arg: arg.lower()=='true')
+    # print(datetime.now(), colored('This is', stack()[0].function, 'called by', stack()[1].function, 'green'))
+
+    if (stack()[1].function in ['dispatch_request', '<module>']):
+        set_kwargs_global(**kwargs)
 
     # ----------------------------------------------------------------------------------------------------
 
     global feeds
 
     if (    not feeds
-        or  doRefresh
+        or  kwargsGlobal['doRefresh']
     ):
 
-        get_dataset_urls(
-            doRefresh = doRefresh,
-            doLimitCatalogues = doLimitCatalogues,
-            doLimitDatasets = doLimitDatasets,
-        )
+        get_dataset_urls()
 
         # ----------------------------------------------------------------------------------------------------
 
@@ -307,9 +314,10 @@ def get_feeds(
                 # ----------------------------------------------------------------------------------------------------
 
                 try:
-                    r3 = try_requests(datasetUrl)
+                    r3, r3NumTries = try_requests(datasetUrl)
+                    # print(datetime.now(), 'Got response in {} {}'.format(r3NumTries, 'try' if r3NumTries == 1 else 'tries'))
                 except:
-                    print('ERROR: Can\'t get dataset', catalogueUrl, '->', datasetUrl)
+                    print(datetime.now(), colored('ERROR: Can\'t get dataset {} -> {}'.format(catalogueUrl, datasetUrl), 'yellow'))
                     continue
 
                 # ----------------------------------------------------------------------------------------------------
@@ -335,7 +343,7 @@ def get_feeds(
                                 and 'distribution' in jsonld.keys()
                                 and type(jsonld['distribution']) == list
                             ):
-                                for feedInfo in jsonld['distribution'][0:doLimitFeeds]:
+                                for feedInfo in jsonld['distribution'][0:kwargsGlobal['doLimitFeeds']]:
                                     if (type(feedInfo) == dict):
 
                                         datasetFeed = {}
@@ -361,7 +369,7 @@ def get_feeds(
                 # ----------------------------------------------------------------------------------------------------
 
                 datasetFeeds['metadata']['counts'] = len(datasetFeeds['data'])
-                datasetFeeds['metadata']['timeLastUpdated'] = str(datetime.datetime.now())
+                datasetFeeds['metadata']['timeLastUpdated'] = str(datetime.now())
 
                 feeds['data'][catalogueUrl]['data'][datasetUrl] = datasetFeeds
 
@@ -371,7 +379,7 @@ def get_feeds(
                 val['metadata']['counts']
                 for val in feeds['data'][catalogueUrl]['data'].values()
             ])
-            feeds['data'][catalogueUrl]['metadata']['timeLastUpdated'] = str(datetime.datetime.now())
+            feeds['data'][catalogueUrl]['metadata']['timeLastUpdated'] = str(datetime.now())
 
         # ----------------------------------------------------------------------------------------------------
 
@@ -379,18 +387,18 @@ def get_feeds(
             val['metadata']['counts']
             for val in feeds['data'].values()
         ])
-        feeds['metadata']['timeLastUpdated'] = str(datetime.datetime.now())
+        feeds['metadata']['timeLastUpdated'] = str(datetime.now())
 
     # ----------------------------------------------------------------------------------------------------
 
     if (    not exists(dirNameCache + fileNameFeeds)
-        or  doRefresh
+        or  kwargsGlobal['doRefresh']
     ):
         json.dump(feeds, open(dirNameCache + fileNameFeeds, 'w'))
 
     # ----------------------------------------------------------------------------------------------------
 
-    if (not doPath):
+    if (not kwargsGlobal['doPath']):
         output = feeds
     else:
         output = copy.deepcopy(feeds)
@@ -402,14 +410,14 @@ def get_feeds(
                         'datasetUrl': datasetUrl,
                     })
 
-    if (doFlatten):
+    if (kwargsGlobal['doFlatten']):
         return [
             val3
             for val1 in output['data'].values()
             for val2 in val1['data'].values()
             for val3 in val2['data']
         ]
-    elif (doMetadata):
+    elif (kwargsGlobal['doMetadata']):
         return output
     else:
         return {
@@ -425,37 +433,22 @@ def get_feeds(
 feedUrls = None
 
 @application.route('/feedurls')
-def get_feed_urls(
-    doRefresh = False,
-    doFlatten = False,
-    doMetadata = False,
-    doLimitCatalogues = None,
-    doLimitDatasets = None,
-    doLimitFeeds = None,
-):
+def get_feed_urls(**kwargs):
 
-    if (stack()[1].function == 'dispatch_request'):
-        doRefresh = request.args.get('doRefresh', default=False, type=lambda arg: arg.lower()=='true')
-        doFlatten = request.args.get('doFlatten', default=False, type=lambda arg: arg.lower()=='true')
-        doMetadata = request.args.get('doMetadata', default=False, type=lambda arg: arg.lower()=='true')
-        doLimitCatalogues = request.args.get('doLimitCatalogues', default=None, type=int)
-        doLimitDatasets = request.args.get('doLimitDatasets', default=None, type=int)
-        doLimitFeeds = request.args.get('doLimitFeeds', default=None, type=int)
+    # print(datetime.now(), colored('This is', stack()[0].function, 'called by', stack()[1].function, 'green'))
+
+    if (stack()[1].function in ['dispatch_request', '<module>']):
+        set_kwargs_global(**kwargs)
 
     # ----------------------------------------------------------------------------------------------------
 
     global feedUrls
 
     if (    not feedUrls
-        or  doRefresh
+        or  kwargsGlobal['doRefresh']
     ):
 
-        get_feeds(
-            doRefresh = doRefresh,
-            doLimitCatalogues = doLimitCatalogues,
-            doLimitDatasets = doLimitDatasets,
-            doLimitFeeds = doLimitFeeds,
-        )
+        get_feeds()
 
         # ----------------------------------------------------------------------------------------------------
 
@@ -472,14 +465,14 @@ def get_feed_urls(
 
     # ----------------------------------------------------------------------------------------------------
 
-    if (doFlatten):
+    if (kwargsGlobal['doFlatten']):
         return [
             val3
             for val1 in feedUrls['data'].values()
             for val2 in val1['data'].values()
             for val3 in val2['data']
         ]
-    elif (doMetadata):
+    elif (kwargsGlobal['doMetadata']):
         return feedUrls
     else:
         return {
@@ -498,41 +491,24 @@ else:
     opportunities = None
 
 @application.route('/opportunities')
-def get_opportunities(
-    doRefresh = False,
-    doFlatten = False,
-    doMetadata = False,
-    doLimitCatalogues = None,
-    doLimitDatasets = None,
-    doLimitFeeds = None,
-    doLimitOpportunities = None,
-    doPath = False,
-):
+def get_opportunities(**kwargs):
 
-    if (stack()[1].function == 'dispatch_request'):
-        doRefresh = request.args.get('doRefresh', default=False, type=lambda arg: arg.lower()=='true')
-        doFlatten = request.args.get('doFlatten', default=False, type=lambda arg: arg.lower()=='true')
-        doMetadata = request.args.get('doMetadata', default=False, type=lambda arg: arg.lower()=='true')
-        doLimitCatalogues = request.args.get('doLimitCatalogues', default=None, type=int)
-        doLimitDatasets = request.args.get('doLimitDatasets', default=None, type=int)
-        doLimitFeeds = request.args.get('doLimitFeeds', default=None, type=int)
-        doLimitOpportunities = request.args.get('doLimitOpportunities', default=None, type=int)
-        doPath = request.args.get('doPath', default=False, type=lambda arg: arg.lower()=='true')
+    t1 = datetime.now()
+
+    # print(datetime.now(), colored('This is', stack()[0].function, 'called by', stack()[1].function, 'green'))
+
+    if (stack()[1].function in ['dispatch_request', '<module>']):
+        set_kwargs_global(**kwargs)
 
     # ----------------------------------------------------------------------------------------------------
 
     global opportunities
 
     if (    not opportunities
-        or  doRefresh
+        or  kwargsGlobal['doRefresh']
     ):
 
-        get_feed_urls(
-            doRefresh = doRefresh,
-            doLimitCatalogues = doLimitCatalogues,
-            doLimitDatasets = doLimitDatasets,
-            doLimitFeeds = doLimitFeeds,
-        )
+        get_feed_urls()
 
         # ----------------------------------------------------------------------------------------------------
 
@@ -546,7 +522,13 @@ def get_opportunities(
 
         # ----------------------------------------------------------------------------------------------------
 
+        catalogueUrlCtr = 1
+        catalogueUrlNum = len(feedUrls['data'])
+
         for catalogueUrl in feedUrls['data'].keys():
+
+            print(datetime.now(), colored('catalogueUrl ({}/{}): {}'.format(catalogueUrlCtr, catalogueUrlNum, catalogueUrl), 'blue'))
+            catalogueUrlCtr += 1
 
             opportunities['data'][catalogueUrl] = {
                 'metadata': {
@@ -558,7 +540,13 @@ def get_opportunities(
 
             # ----------------------------------------------------------------------------------------------------
 
+            datasetUrlCtr = 1
+            datasetUrlNum = len(feedUrls['data'][catalogueUrl]['data'])
+
             for datasetUrl in feedUrls['data'][catalogueUrl]['data'].keys():
+
+                print(datetime.now(), colored('datasetUrl ({}/{}): {}'.format(datasetUrlCtr, datasetUrlNum, datasetUrl), 'blue'))
+                datasetUrlCtr += 1
 
                 opportunities['data'][catalogueUrl]['data'][datasetUrl] = {
                     'metadata': {
@@ -570,7 +558,13 @@ def get_opportunities(
 
                 # ----------------------------------------------------------------------------------------------------
 
+                feedUrlCtr = 1
+                feedUrlNum = len(feedUrls['data'][catalogueUrl]['data'][datasetUrl]['data'])
+
                 for feedUrl in feedUrls['data'][catalogueUrl]['data'][datasetUrl]['data']:
+
+                    print(datetime.now(), colored('feedUrl ({}/{}): {}'.format(feedUrlCtr, feedUrlNum, feedUrl), 'blue'))
+                    feedUrlCtr += 1
 
                     feedOpportunities = {
                         'metadata': {
@@ -582,15 +576,20 @@ def get_opportunities(
 
                     # ----------------------------------------------------------------------------------------------------
 
-                    feedUrlCurrent = feedUrl
+                    feedPageUrl = feedUrl
+                    feedPageUrlCtr = 1
 
-                    while (feedUrlCurrent):
+                    while (feedPageUrl):
+
+                        print(datetime.now(), 'feedPageUrl ({}): {}'.format(feedPageUrlCtr, feedPageUrl))
+                        feedPageUrlCtr += 1
 
                         try:
-                            r4 = try_requests(feedUrlCurrent)
+                            r4, r4NumTries = try_requests(feedPageUrl)
+                            print(datetime.now(), 'Got response in {} {}'.format(r4NumTries, 'try' if r4NumTries == 1 else 'tries'))
                         except:
-                            print('ERROR: Can\'t get feed', catalogueUrl, '->', datasetUrl, '->', feedUrlCurrent)
-                            continue
+                            print(datetime.now(), colored('ERROR: Can\'t get feed page {} -> {} -> {}'.format(catalogueUrl, datasetUrl, feedPageUrl), 'yellow'))
+                            break
 
                         # ----------------------------------------------------------------------------------------------------
 
@@ -601,11 +600,22 @@ def get_opportunities(
                             if (    'items' in r4.json().keys()
                                 and type(r4.json()['items']) == list
                             ):
+
+                                itemCtr = 1
+                                itemNum = len(r4.json()['items'])
+
                                 for opportunityInfo in r4.json()['items']:
+
+                                    print('\ritem ({}/{}): {}'.format(itemCtr, itemNum, opportunityInfo['id']), end='')
+                                    itemCtr += 1
+
                                     if (    type(opportunityInfo) == dict
                                         and 'state' in opportunityInfo.keys()
+                                        and type(opportunityInfo['state']) in [int, str]
                                         and 'id' in opportunityInfo.keys()
+                                        and type(opportunityInfo['id']) in [int, str]
                                         and 'modified' in opportunityInfo.keys()
+                                        and type(opportunityInfo['modified']) in [int, str]
                                         and (   opportunityInfo['id'] not in feedOpportunities['data'].keys()
                                             or  opportunityInfo['modified'] > feedOpportunities['data'][opportunityInfo['id']]['modified'] )
                                     ):
@@ -642,21 +652,29 @@ def get_opportunities(
 
                                         feedOpportunities['data'][opportunityInfo['id']] = feedOpportunity
 
-                                        if (len(feedOpportunities['data']) == doLimitOpportunities):
+                                        if (len(feedOpportunities['data']) == kwargsGlobal['doLimitOpportunities']):
                                             break
+                                            # TODO: Think we need to ensure this takes us out of the for-loop as well as the while-loop
+
+                                if (itemNum > 0):
+                                    print()
+                                print(datetime.now(), 'Processed this feed page, we now have {} items for this feed'.format(len(feedOpportunities['data'])))
 
                             if (    'next' in r4.json().keys()
                                 and type(r4.json()['next']) == str
-                                and r4.json()['next'] != feedUrlCurrent
-                                and len(feedOpportunities['data']) != doLimitOpportunities
+                                and r4.json()['next'] != feedPageUrl
+                                and len(feedOpportunities['data']) != kwargsGlobal['doLimitOpportunities']
                             ):
-                                feedUrlCurrent = r4.json()['next']
+                                print(datetime.now(), 'Going to the next feed page')
+                                feedPageUrl = r4.json()['next']
                             else:
-                                feedUrlCurrent = None
+                                print(datetime.now(), 'Going to the next feed')
+                                feedPageUrl = None
 
                         else:
-                            print('ERROR: Problem with feed', catalogueUrl, '->', datasetUrl, '->', feedUrlCurrent)
-                            feedUrlCurrent = None
+                            print(datetime.now(), colored('ERROR: Problem with feed page {} -> {} -> {}'.format(catalogueUrl, datasetUrl, feedPageUrl), 'yellow'))
+                            print(datetime.now(), 'Going to the next feed')
+                            feedPageUrl = None
 
                     # ----------------------------------------------------------------------------------------------------
 
@@ -666,7 +684,7 @@ def get_opportunities(
                     # ----------------------------------------------------------------------------------------------------
 
                     feedOpportunities['metadata']['counts'] = len(feedOpportunities['data'])
-                    feedOpportunities['metadata']['timeLastUpdated'] = str(datetime.datetime.now())
+                    feedOpportunities['metadata']['timeLastUpdated'] = str(datetime.now())
 
                     opportunities['data'][catalogueUrl]['data'][datasetUrl]['data'][feedUrl] = feedOpportunities
 
@@ -676,7 +694,7 @@ def get_opportunities(
                     val['metadata']['counts']
                     for val in opportunities['data'][catalogueUrl]['data'][datasetUrl]['data'].values()
                 ])
-                opportunities['data'][catalogueUrl]['data'][datasetUrl]['metadata']['timeLastUpdated'] = str(datetime.datetime.now())
+                opportunities['data'][catalogueUrl]['data'][datasetUrl]['metadata']['timeLastUpdated'] = str(datetime.now())
 
             # ----------------------------------------------------------------------------------------------------
 
@@ -684,7 +702,7 @@ def get_opportunities(
                 val['metadata']['counts']
                 for val in opportunities['data'][catalogueUrl]['data'].values()
             ])
-            opportunities['data'][catalogueUrl]['metadata']['timeLastUpdated'] = str(datetime.datetime.now())
+            opportunities['data'][catalogueUrl]['metadata']['timeLastUpdated'] = str(datetime.now())
 
         # ----------------------------------------------------------------------------------------------------
 
@@ -692,18 +710,18 @@ def get_opportunities(
             val['metadata']['counts']
             for val in opportunities['data'].values()
         ])
-        opportunities['metadata']['timeLastUpdated'] = str(datetime.datetime.now())
+        opportunities['metadata']['timeLastUpdated'] = str(datetime.now())
 
     # ----------------------------------------------------------------------------------------------------
 
     if (    not exists(dirNameCache + fileNameOpportunities)
-        or  doRefresh
+        or  kwargsGlobal['doRefresh']
     ):
         json.dump(opportunities, open(dirNameCache + fileNameOpportunities, 'w'))
 
     # ----------------------------------------------------------------------------------------------------
 
-    if (not doPath):
+    if (not kwargsGlobal['doPath']):
         output = opportunities
     else:
         output = copy.deepcopy(opportunities)
@@ -717,7 +735,10 @@ def get_opportunities(
                             'feedUrl': feedUrl,
                         })
 
-    if (doFlatten):
+    t2 = datetime.now()
+    print(datetime.now(), 'Time taken:', t2-t1)
+
+    if (kwargsGlobal['doFlatten']):
         return [
             val4
             for val1 in output['data'].values()
@@ -725,7 +746,7 @@ def get_opportunities(
             for val3 in val2['data'].values()
             for val4 in val3['data']
         ]
-    elif (doMetadata):
+    elif (kwargsGlobal['doMetadata']):
         return output
     else:
         return {

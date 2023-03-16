@@ -1,6 +1,8 @@
+<!-- <img src='https://openactive.io/brand-assets/openactive-logo-large.png' width='500'> -->
 <img src='images/OpenActive-Landscape-Logo-2.png' width='500'>
 
 [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/Reikyo/OpenActive-Py/main?labpath=index.ipynb)
+[![License](http://img.shields.io/:license-mit-blue.svg)](http://theodi.mit-license.org)
 
 # Files
 
