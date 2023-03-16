@@ -6,7 +6,7 @@ from datetime import datetime
 from flask import Flask, jsonify, request
 from inspect import stack
 from os.path import exists
-# from termcolor import colored
+from termcolor import colored
 
 # ----------------------------------------------------------------------------------------------------
 
